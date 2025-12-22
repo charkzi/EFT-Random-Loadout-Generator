@@ -62,11 +62,11 @@ input {
 }
 
 .item img { 
-  width:100%;              /* Bild füllt die Breite des Containers */
-  max-height:200px;        /* Maximalhöhe */
-  object-fit: contain;      /* gesamte Grafik sichtbar, kein Zuschneiden */
-  image-rendering: auto;   /* glatte Kanten */
-  margin-bottom:5px;       /* Abstand zum Text */
+  width:100%;              
+  max-height:200px;        
+  object-fit: contain;     
+  image-rendering: auto;   
+  margin-bottom:5px;       
 }
 </style>
 </head>
@@ -103,7 +103,7 @@ function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr
 
 function card(title, item) {
   if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
-  return `<div class="item"><h3>${title}</h3>${item.iconLink ? `<img src="${item.iconLink}">` : ''}<div>${item.shortName||item.name||''}</div></div>`;
+  return `<div class="item"><h3>${title}</h3>${item.name !== "Keine" && item.iconLink ? `<img src="${item.iconLink}">` : ''}<div>${item.shortName||item.name||''}</div></div>`;
 }
 
 function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
@@ -144,9 +144,14 @@ async function generateLoadout(forced=null){
     let rig = null;
     let armor = null;
 
+    // Neue Logik: Keine Rüstung bei armored Rig
     if(Math.random()<0.5){
       rig = pick(armoredRigs.concat(normalRigs));
-      armor = rig.name.toLowerCase().includes("armored") ? null : pick(heavyArmor.concat(lightArmor));
+      if(rig.name.toLowerCase().includes("armored")){
+        armor = { name: "Keine" }; // Keine Rüstung, weil Rig bereits Platten enthält
+      } else {
+        armor = pick(heavyArmor.concat(lightArmor));
+      }
     } else {
       armor = pick(heavyArmor.concat(lightArmor));
       rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
@@ -200,4 +205,3 @@ if(params.has("loadout")){
 
 </body>
 </html>
-
