@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator V5</title>
+<title>EFT Random Loadout Generator ohne Fallback</title>
 <style>
   body { background: #0b0b0b; color: #eaeaea; font-family: Arial, sans-serif; text-align: center; transition: all 0.3s; }
   button { padding: 14px 28px; font-size: 18px; cursor: pointer; margin: 20px; }
@@ -17,107 +17,77 @@
 </head>
 <body>
 
-<h1>🎯 Escape from Tarkov – Random Loadout V5</h1>
+<h1>🎯 Escape from Tarkov – Random Loadout</h1>
 <button onclick="generateLoadout()">🔄 Neues Loadout</button>
 <div class="toggle" onclick="toggleTheme()">🌓 Dark/Light</div>
 
 <div class="grid" id="loadout"></div>
 
 <script>
-// --- Fallback Set
-function loadFallbackData() {
-  return [
-    // Waffen
-    { id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm", types:["gun"] },
-    { id:"m4a1", name:"M4A1", caliber:"5.56x45mm", types:["gun"] },
-    { id:"mp5", name:"HK MP5", caliber:"9x19mm", types:["gun"] },
-    { id:"vss", name:"VSS Vintorez", caliber:"9x39mm", types:["gun"] },
-    { id:"svd", name:"SVD Dragunov", caliber:"7.62x54R", types:["gun"] },
-
-    // Munition
-    { id:"545bp", name:"5.45×39mm BP", caliber:"5.45x39mm", types:["ammo"] },
-    { id:"556m855", name:"5.56×45mm M855", caliber:"5.56x45mm", types:["ammo"] },
-    { id:"9x19fmj", name:"9x19mm FMJ", caliber:"9x19mm", types:["ammo"] },
-    { id:"9x39sp6", name:"9x39mm SP‑6", caliber:"9x39mm", types:["ammo"] },
-    { id:"762x54r7n1", name:"7.62×54R 7N1", caliber:"7.62x54R", types:["ammo"] },
-
-    // Armor
-    { id:"paca_soft", name:"PACA Soft Armor", types:["armor"] },
-    { id:"6b23", name:"6B23 Armor", types:["armor"] },
-    { id:"bntizhuk", name:"BNTI Zhuk‑6a Armor", types:["armor"] },
-
-    // Rigs
-    { id:"avs", name:"Crye AVS", types:["rig"] },
-    { id:"blackrock", name:"BlackRock Chest Rig", types:["rig"] },
-    { id:"wartech_tv110", name:"Wartech TV‑110", types:["rig"] },
-
-    // Helme
-    { id:"kiver", name:"Kiver Helmet", types:["headwear"] },
-    { id:"psh97", name:"PSh‑97 Helmet", types:["headwear"] },
-
-    // Rucksäcke
-    { id:"6sh118", name:"6Sh118 Backpack", types:["backpack"] },
-    { id:"pilgrim", name:"Pilgrim Backpack", types:["backpack"] },
-
-    // Maps
-    { id:"map_factory", name:"Factory", types:["map"] },
-    { id:"map_customs", name:"Customs", types:["map"] },
-    { id:"map_woods", name:"Woods", types:["map"] }
-  ];
-}
-
-// --- Hilfsfunktionen
 function pick(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
-
-function card(title, item) {
-  return `<div class="item"><h3>${title}</h3>${item.iconLink ? `<img src="${item.iconLink}">` : ""}<div>${item.name}</div></div>`;
-}
-
+function card(title, item) { return `<div class="item"><h3>${title}</h3>${item.name}</div>`; }
 function toggleTheme() { document.body.classList.toggle("light"); }
 
-// --- Loadout Generator
-function generateLoadout() {
-  const items = loadFallbackData();
-  const guns = items.filter(i=>i.types.includes("gun"));
-  const ammo = items.filter(i=>i.types.includes("ammo"));
-  const armor = items.filter(i=>i.types.includes("armor"));
-  const rigs = items.filter(i=>i.types.includes("rig"));
-  const helmets = items.filter(i=>i.types.includes("headwear"));
-  const backpacks = items.filter(i=>i.types.includes("backpack"));
-  const maps = items.filter(i=>i.types.includes("map"));
+async function generateLoadout() {
+  const API = "https://api.tarkov.dev/graphql";
 
-  let weapon = pick(guns);
-  let compatibleAmmo = ammo.filter(a=>a.caliber===weapon.caliber);
-  let selectedAmmo = pick(compatibleAmmo);
+  try {
+    const query = `
+    {
+      weapons: items(types: [gun]) { name caliber }
+      helmets: items(types: [headwear]) { name }
+      armors: items(types: [armor]) { name }
+      rigs: items(types: [rig]) { name }
+      backpacks: items(types: [backpack]) { name }
+      ammo: items(types: [ammo]) { name caliber }
+      maps: items(types: [map]) { name }
+    }`;
+    
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query })
+    });
+    const data = (await res.json()).data;
 
-  // Rig & Armor Logik
-  let rig = pick(rigs);
-  let armorChoice = (rig.name.toLowerCase().includes("plate") || rig.name.toLowerCase().includes("armored")) 
-                    ? null 
-                    : pick(armor);
+    // Waffe & passende Munition
+    let weapon = pick(data.weapons);
+    let compatibleAmmo = data.ammo.filter(a => a.caliber === weapon.caliber);
+    let selectedAmmo = pick(compatibleAmmo);
 
-  let helmet = pick(helmets);
-  let backpack = pick(backpacks);
-  let map = pick(maps);
+    // Rig & Armor Logik
+    let rig = pick(data.rigs);
+    let armorChoice = rig.name.toLowerCase().includes("plate") || rig.name.toLowerCase().includes("armored")
+                      ? null
+                      : pick(data.armors);
 
-  // Random Zahl 0-10 anstelle von Attachments
-  let randomAttachments = Math.floor(Math.random() * 11); // 0 bis 10
+    let helmet = pick(data.helmets);
+    let backpack = pick(data.backpacks);
+    let map = pick(data.maps);
 
-  document.getElementById("loadout").innerHTML = `
-    ${card("🔫 Waffe", weapon)}
-    ${card("🎲 Random Attachment-Wert", {name: randomAttachments})}
-    ${selectedAmmo ? card("💥 Munition", selectedAmmo) : ""}
-    ${card("🛡️ Armor", armorChoice || {name:"Keine zusätzliche Armor"})}
-    ${card("🎒 Rig", rig)}
-    ${card("🥽 Helm", helmet)}
-    ${card("🎒 Rucksack", backpack)}
-    ${card("🗺️ Map", map)}
-  `;
+    // Random Zahl 0-10 als Attachment
+    let randomAttachments = Math.floor(Math.random() * 11);
+
+    document.getElementById("loadout").innerHTML = `
+      ${card("🔫 Waffe", weapon)}
+      ${card("🎲 Attachment-Wert (0-10)", {name: randomAttachments})}
+      ${selectedAmmo ? card("💥 Munition", selectedAmmo) : ""}
+      ${card("🛡️ Armor", armorChoice || {name:"Keine zusätzliche Armor"})}
+      ${card("🎒 Rig", rig)}
+      ${card("🥽 Helm", helmet)}
+      ${card("🎒 Rucksack", backpack)}
+      ${card("🗺️ Map", map)}
+    `;
+  } catch (e) {
+    document.getElementById("loadout").innerHTML = "Fehler beim Laden der Daten — API ist momentan nicht erreichbar oder antwortet falsch.";
+    console.error(e);
+  }
 }
 
-// --- Initiales Loadout
+// Initiales Loadout
 generateLoadout();
 </script>
 
 </body>
 </html>
+
