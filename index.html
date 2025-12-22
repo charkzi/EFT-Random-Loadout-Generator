@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>EFT Random Loadout Generator v2.1</title>
+
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --card: #161616;
+      --text: #eaeaea;
+      --button: #2a2a2a;
+    }
+
+    body.light {
+      --bg: #f4f4f4;
+      --card: #ffffff;
+      --text: #111111;
+      --button: #dddddd;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding-bottom: 40px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    button {
+      padding: 14px 22px;
+      font-size: 16px;
+      cursor: pointer;
+      margin: 6px;
+      background: var(--button);
+      color: var(--text);
+      border: none;
+      border-radius: 8px;
+    }
+
+    input {
+      width: 80%;
+      padding: 10px;
+      margin-top: 10px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid #555;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 10px;
+    }
+
+    .item {
+      background: var(--card);
+      padding: 12px;
+      border-radius: 10px;
+      transition: background 0.3s;
+    }
+
+    .item img {
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🎯 EFT Random Loadout – v2.1</h1>
+
+<button onclick="generateLoadout()">🔄 Neues Loadout</button>
+<button onclick="generateShareLink()">🔗 Share-Link</button>
+<button onclick="toggleTheme()">🌗 Dark / Light</button>
+
+<br>
+<input id="shareLink" readonly placeholder="Hier erscheint dein Share-Link">
+
+<div class="grid" id="loadout"></div>
+
+<script>
+/* ---------- THEME ---------- */
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme === "light") document.body.classList.add("light");
+
+function toggleTheme() {
+  document.body.classList.toggle("light");
+  localStorage.setItem(
+    "theme",
+    document.body.classList.contains("light") ? "light" : "dark"
+  );
+}
+
+/* ---------- API ---------- */
+const API = "https://api.tarkov.dev/graphql";
+let currentLoadout = null;
+
+async function query(query) {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query })
+  });
+  if (!res.ok) throw new Error("API Fehler");
+  return (await res.json()).data;
+}
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function card(title, item) {
+  if (!item) return "";
+  return `
+    <div class="item">
+      <h3>${title}</h3>
+      ${item.imageLink ? `<img src="${item.imageLink}">` : ""}
+      <div>${item.name}</div>
+    </div>`;
+}
+
+async function generateLoadout(forced = null) {
+  const container = document.getElementById("loadout");
+  container.innerHTML = "⏳ Generiere Loadout...";
+
+  try {
+    const data = await query(`
+    {
+      weapons: items(types: [gun]) {
+        name
+        imageLink
+        caliber
+        slots {
+          name
+          filters {
+            allowedItems {
+              name
+              imageLink
+            }
+          }
+        }
+      }
+      helmets: items(types: [headwear]) { name imageLink }
+      masks: items(types: [faceCover]) { name imageLink }
+      armors: items(types: [armor]) { name imageLink }
+      rigs: items(types: [rig]) { name imageLink }
+      backpacks: items(types: [backpack]) { name imageLink }
+      ammo: items(types: [ammo]) { name imageLink caliber }
+    }`);
+
+    const weapon = forced?.weapon
+      ? data.weapons.find(w => w.name === forced.weapon)
+      : pick(data.weapons);
+
+    const compatibleAmmo = data.ammo.filter(a => a.caliber === weapon.caliber);
+    const ammo = compatibleAmmo.length ? pick(compatibleAmmo) : null;
+
+    const helmet = forced?.helmet ? data.helmets.find(h => h.name === forced.helmet) : pick(data.helmets);
+    const mask = forced?.mask ? data.masks.find(m => m.name === forced.mask) : pick(data.masks);
+    const armor = forced?.armor ? data.armors.find(a => a.name === forced.armor) : pick(data.armors);
+    const rig = forced?.rig ? data.rigs.find(r => r.name === forced.rig) : pick(data.rigs);
+    const backpack = forced?.backpack ? data.backpacks.find(b => b.name === forced.backpack) : pick(data.backpacks);
+
+    let attachmentsHTML = "";
+    weapon.slots?.forEach(slot => {
+      if (slot.filters?.allowedItems?.length) {
+        attachmentsHTML += card(slot.name, pick(slot.filters.allowedItems));
+      }
+    });
+
+    currentLoadout = {
+      weapon: weapon.name,
+      helmet: helmet.name,
+      mask: mask.name,
+      armor: armor.name,
+      rig: rig.name,
+      backpack: backpack.name
+    };
+
+    container.innerHTML = `
+      ${card("🔫 Waffe", weapon)}
+      ${attachmentsHTML}
+      ${card("💥 Munition", ammo)}
+      ${card("🥽 Helm", helmet)}
+      ${card("😷 Maske", mask)}
+      ${card("🛡️ Rüstung", armor)}
+      ${card("🎒 Rig", rig)}
+      ${card("🎒 Rucksack", backpack)}
+    `;
+  } catch (e) {
+    container.innerHTML = "❌ Fehler beim Laden der Daten";
+    console.error(e);
+  }
+}
+
+function generateShareLink() {
+  if (!currentLoadout) return;
+  const encoded = btoa(JSON.stringify(currentLoadout));
+  const url = `${location.origin}${location.pathname}?loadout=${encoded}`;
+  document.getElementById("shareLink").value = url;
+}
+
+/* ---------- LOAD SHARED ---------- */
+const params = new URLSearchParams(window.location.search);
+if (params.has("loadout")) {
+  try {
+    const decoded = JSON.parse(atob(params.get("loadout")));
+    generateLoadout(decoded);
+  } catch {
+    generateLoadout();
+  }
+}
+</script>
+
+</body>
+</html>
