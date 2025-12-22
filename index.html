@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Mit passender Munition</title>
+<title>EFT Random Loadout Generator – Offline-Fallback</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -27,11 +27,10 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 <div class="grid" id="loadout"></div>
 
 <script>
-const API = "https://api.tarkov.dev/graphql";
 let allItems = null;
 let currentLoadout = null;
 
-// Theme Toggle
+// Dark/Light Toggle
 const savedTheme = localStorage.getItem("theme");
 if(savedTheme==="light") document.body.classList.add("light");
 function toggleTheme(){
@@ -50,22 +49,44 @@ function card(title,item){
 
 function fallbackFilter(items,types){ return items.filter(i=>i.types?.some(t=>types.includes(t))); }
 
-async function fetchAllItems(){
-  const res=await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({query:"query { items { id name shortName iconLink types caliber } }"})
-  });
-  const json=await res.json();
-  return json.data.items;
+// Fallback-Testdaten
+function loadFallbackData(){
+  return [
+    {id:1,name:"AK-74",caliber:"5.45x39mm",types:["gun"],iconLink:"https://i.imgur.com/6Y0Wcdq.png"},
+    {id:2,name:"M4A1",caliber:"5.56x45mm",types:["gun"],iconLink:"https://i.imgur.com/3lK1QfA.png"},
+    {id:3,name:"6B13 Armor",types:["armor"],iconLink:"https://i.imgur.com/XOqGHlF.png"},
+    {id:4,name:"6B23 Armor",types:["armor"],iconLink:"https://i.imgur.com/8vsh6xX.png"},
+    {id:5,name:"Fort Rig",types:["rig"],iconLink:"https://i.imgur.com/r0y0JQ5.png"},
+    {id:6,name:"BlackRock Rig",types:["rig"],iconLink:"https://i.imgur.com/jUl9X7p.png"},
+    {id:7,name:"SSh-68 Helm",types:["headwear"],iconLink:"https://i.imgur.com/RO1iH5G.png"},
+    {id:8,name:"Ops-Core Helm",types:["headwear"],iconLink:"https://i.imgur.com/q2cYpM0.png"},
+    {id:9,name:"MBSS Backpack",types:["backpack"],iconLink:"https://i.imgur.com/3NNcKUl.png"},
+    {id:10,name:"Scav Backpack",types:["backpack"],iconLink:"https://i.imgur.com/1pVk8vB.png"},
+    {id:11,name:"5.45x39mm BP",types:["ammo"],caliber:"5.45x39mm",iconLink:"https://i.imgur.com/J6EjZuD.png"},
+    {id:12,name:"5.56x45mm M855",types:["ammo"],caliber:"5.56x45mm",iconLink:"https://i.imgur.com/1RmJjmu.png"}
+  ];
 }
 
+// Generator
 async function generateLoadout(forced=null){
   const container=document.getElementById("loadout");
   container.innerHTML="⏳ Lade Loadout…";
 
   try{
-    if(!allItems) allItems=await fetchAllItems();
+    if(!allItems){
+      try{
+        // Versuch API
+        const res=await fetch("https://api.tarkov.dev/graphql",{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({query:"query { items { id name shortName iconLink types caliber } }"})
+        });
+        const data=await res.json();
+        allItems=data?.data?.items || loadFallbackData();
+      }catch{
+        allItems = loadFallbackData();
+      }
+    }
 
     let weapons=fallbackFilter(allItems,["gun"]);
     let helmets=fallbackFilter(allItems,["headwear","helmet"]);
@@ -77,7 +98,7 @@ async function generateLoadout(forced=null){
     // 🔹 Waffe zuerst
     const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
 
-    // 🔹 Passende Munition nach Kaliber
+    // 🔹 Passende Munition
     let ammo = null;
     if(weapon?.caliber){
       const compatibleAmmo = ammos.filter(a=>a.caliber && a.caliber.toLowerCase()===weapon.caliber.toLowerCase());
@@ -99,23 +120,22 @@ async function generateLoadout(forced=null){
     if(Math.random()<0.5){
       rig = pick(armoredRigs.concat(normalRigs));
       if(rig.name.toLowerCase().includes("armored")){
-        armor = null; // Armored Rig → keine Armor
+        armor = null;
       }else{
         armor = pick(heavyArmor.concat(lightArmor));
         if(armor && armor.name.toLowerCase().includes("armor")){
-          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
+          rig = pick(normalRigs);
         }
       }
     }else{
       armor = pick(heavyArmor.concat(lightArmor));
       if(armor && armor.name.toLowerCase().includes("armor")){
-        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
+        rig = pick(normalRigs);
       }else{
         rig = pick(armoredRigs.concat(normalRigs));
       }
     }
 
-    // Zufällige Map
     const map = pick(maps);
 
     currentLoadout = {
@@ -138,7 +158,7 @@ async function generateLoadout(forced=null){
       `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>`;
 
   }catch(e){
-    container.innerHTML="❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
+    container.innerHTML="❌ Fehler beim Laden der Daten.";
     console.error(e);
   }
 }
