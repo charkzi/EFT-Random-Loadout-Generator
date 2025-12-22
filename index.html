@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – API Only</title>
+<title>EFT Random Loadout Generator – Ohne Munition</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -54,12 +54,11 @@ async function fetchAllItems() {
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({ query: `
       {
-        weapons: items(types: [gun]) { id name shortName iconLink caliber }
+        weapons: items(types: [gun]) { id name shortName iconLink }
         helmets: items(types: [headwear]) { id name shortName iconLink }
         armors: items(types: [armor]) { id name shortName iconLink }
         rigs: items(types: [rig]) { id name shortName iconLink }
         backpacks: items(types: [backpack]) { id name shortName iconLink }
-        ammo: items(types: [ammo]) { id name shortName iconLink caliber }
         headphones: items(types: [headphones, earpiece, communication]) { id name shortName iconLink }
       }
     `})
@@ -80,13 +79,7 @@ async function generateLoadout(forced=null){
     const armors = allItems.armors;
     const rigs = allItems.rigs;
     const backpacks = allItems.backpacks;
-    const ammo = allItems.ammo;
     const headphones = allItems.headphones;
-
-    // Waffe & Munition
-    const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
-    const compatibleAmmo = ammo.filter(a=>a.caliber===weapon.caliber);
-    const selectedAmmo = pick(compatibleAmmo);
 
     // Rig/Armor Konflikt
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
@@ -106,9 +99,10 @@ async function generateLoadout(forced=null){
     }
 
     // Helm, Rucksack, Kopfhörer, Map, Attachments
-    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
-    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
-    const selectedHeadphones = forced?.headphones ? headphones.find(h=>h.id===forced.headphones) : pick(headphones);
+    const weapon = pick(weapons);
+    const helmet = pick(helmets);
+    const backpack = pick(backpacks);
+    const selectedHeadphones = pick(headphones);
     const map = pick(maps);
     const attachmentValue = getRandomAttachments();
 
@@ -131,8 +125,7 @@ async function generateLoadout(forced=null){
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
       `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
-      `<div class="item"><h3>🎲 Attachments</h3><div>${attachmentValue}</div></div>` +
-      (selectedAmmo ? card("💥 Munition", selectedAmmo) : "");
+      `<div class="item"><h3>🎲 Attachments</h3><div>${attachmentValue}</div></div>`;
 
   }catch(e){
     container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
