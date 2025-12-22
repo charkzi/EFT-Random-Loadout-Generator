@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Mit Munition</title>
+<title>EFT Random Loadout Generator – Mit passender Munition</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -74,65 +74,67 @@ async function generateLoadout(forced=null){
     let backpacks=fallbackFilter(allItems,["backpack"]);
     let ammos=fallbackFilter(allItems,["ammo"]);
 
-    const weapon=forced?.weapon?weapons.find(w=>w.id===forced.weapon):pick(weapons);
-    const helmet=forced?.helmet?helmets.find(h=>h.id===forced.helmet):pick(helmets);
-    const backpack=forced?.backpack?backpacks.find(b=>b.id===forced.backpack):pick(backpacks);
+    // 🔹 Waffe zuerst
+    const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
 
-    // Strikte Logik: Rig/Armor Konflikt
-    const armoredRigs=rigs.filter(r=>r.name.toLowerCase().includes("armored"));
-    const normalRigs=rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
-    const heavyArmor=armors.filter(a=>a.name.toLowerCase().includes("armor"));
-    const lightArmor=armors.filter(a=>!a.name.toLowerCase().includes("armor"));
+    // 🔹 Passende Munition nach Kaliber
+    let ammo = null;
+    if(weapon?.caliber){
+      const compatibleAmmo = ammos.filter(a=>a.caliber && a.caliber.toLowerCase()===weapon.caliber.toLowerCase());
+      ammo = pick(compatibleAmmo);
+    }
 
-    let rig=null;
-    let armor=null;
+    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
+    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
+
+    // Strikte Rig/Armor-Logik
+    const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
+    const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
+    const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
+    const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
+
+    let rig = null;
+    let armor = null;
 
     if(Math.random()<0.5){
-      rig=pick(armoredRigs.concat(normalRigs));
+      rig = pick(armoredRigs.concat(normalRigs));
       if(rig.name.toLowerCase().includes("armored")){
-        armor=null;
+        armor = null; // Armored Rig → keine Armor
       }else{
-        armor=pick(heavyArmor.concat(lightArmor));
-        if(armor&&armor.name.toLowerCase().includes("armor")){
-          rig=pick(normalRigs);
+        armor = pick(heavyArmor.concat(lightArmor));
+        if(armor && armor.name.toLowerCase().includes("armor")){
+          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
         }
       }
     }else{
-      armor=pick(heavyArmor.concat(lightArmor));
-      if(armor&&armor.name.toLowerCase().includes("armor")){
-        rig=pick(normalRigs);
+      armor = pick(heavyArmor.concat(lightArmor));
+      if(armor && armor.name.toLowerCase().includes("armor")){
+        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
       }else{
-        rig=pick(armoredRigs.concat(normalRigs));
+        rig = pick(armoredRigs.concat(normalRigs));
       }
     }
 
     // Zufällige Map
-    const map=pick(maps);
+    const map = pick(maps);
 
-    // Passende Munition
-    let ammo=null;
-    if(weapon?.caliber){
-      const compatibleAmmo=ammos.filter(a=>a.caliber&&a.caliber.toLowerCase()===weapon.caliber.toLowerCase());
-      ammo=pick(compatibleAmmo);
-    }
-
-    currentLoadout={
-      weapon:weapon?.id||'',
-      helmet:helmet?.id||'',
-      armor:armor?.id||'',
-      rig:rig?.id||'',
-      backpack:backpack?.id||'',
-      ammo:ammo?.id||'',
-      map:map
+    currentLoadout = {
+      weapon: weapon?.id||'',
+      helmet: helmet?.id||'',
+      armor: armor?.id||'',
+      rig: rig?.id||'',
+      backpack: backpack?.id||'',
+      ammo: ammo?.id||'',
+      map: map
     };
 
     container.innerHTML=
-      card("🔫 Waffe",weapon)+
-      card("🥽 Helm",helmet)+
-      card("🛡️ Rüstung",armor)+
-      card("🎒 Rig",rig)+
-      card("🎒 Rucksack",backpack)+
-      card("💥 Munition",ammo)+
+      card("🔫 Waffe", weapon)+
+      card("💥 Munition", ammo)+
+      card("🥽 Helm", helmet)+
+      card("🛡️ Rüstung", armor)+
+      card("🎒 Rig", rig)+
+      card("🎒 Rucksack", backpack)+
       `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>`;
 
   }catch(e){
