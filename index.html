@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Ohne Munition</title>
+<title>EFT Random Loadout Generator – Kein Armor-Konflikt</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -81,21 +81,21 @@ async function generateLoadout(forced=null){
     const backpacks = allItems.backpacks;
     const headphones = allItems.headphones;
 
-    // Rig/Armor Konflikt
+    // Rig/Armor Konflikt: Armored Rigs erhalten keine zusätzliche Armor
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
     const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
     const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
     const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
 
-    let rig = null;
+    let rig = pick(rigs);
     let armor = null;
 
-    if(Math.random()<0.5){
-      rig = pick(armoredRigs.concat(normalRigs));
-      armor = rig.name.toLowerCase().includes("armored") ? null : pick(heavyArmor.concat(lightArmor));
+    if(rig.name.toLowerCase().includes("armored")){
+      // Armored Rig → keine Armor
+      armor = null;
     } else {
+      // Normales Rig → zufällige Armor
       armor = pick(heavyArmor.concat(lightArmor));
-      rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
     }
 
     // Helm, Rucksack, Kopfhörer, Map, Attachments
