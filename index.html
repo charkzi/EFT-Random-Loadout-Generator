@@ -110,7 +110,7 @@ function card(title, item) {
 }
 
 function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
-function getRandomAttachments() { return Math.floor(Math.random()*11); }
+function getRandomAttachments() { return Math.floor(Math.random()*26); }
 
 async function fetchAllItems() {
   const res = await fetch(API,{
