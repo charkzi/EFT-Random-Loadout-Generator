@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Visuelle Attachments mit Tooltip</title>
+<title>EFT Random Loadout Generator – Ohne Kopfhörer</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; --attachment-filled:#4caf50; --attachment-empty:#555; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; --attachment-filled:#4caf50; --attachment-empty:#ccc; }
@@ -85,7 +85,6 @@ async function fetchAllItems() {
         armors: items(types: [armor]) { id name shortName iconLink }
         rigs: items(types: [rig]) { id name shortName iconLink }
         backpacks: items(types: [backpack]) { id name shortName iconLink }
-        headphones: items(types: [headphones, earpiece, communication]) { id name shortName iconLink }
       }
     `})
   });
@@ -105,7 +104,6 @@ async function generateLoadout(forced=null){
     const armors = allItems.armors;
     const rigs = allItems.rigs;
     const backpacks = allItems.backpacks;
-    const headphones = allItems.headphones;
 
     // Rig/Armor Konflikt
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
@@ -121,18 +119,16 @@ async function generateLoadout(forced=null){
       armor = pick(heavyArmor.concat(lightArmor));
     }
 
-    // Helm, Rucksack, Kopfhörer, Map, Attachments
+    // Helm, Rucksack, Map, Attachments
     const weapon = pick(weapons);
     const helmet = pick(helmets);
     const backpack = pick(backpacks);
-    const selectedHeadphones = pick(headphones);
     const map = pick(maps);
     const attachmentValue = getRandomAttachments();
 
     currentLoadout = {
       weapon: weapon?.id||'',
       helmet: helmet?.id||'',
-      headphones: selectedHeadphones?.id||'',
       armor: armor?.id||'',
       rig: rig?.id||'',
       backpack: backpack?.id||'',
@@ -143,7 +139,6 @@ async function generateLoadout(forced=null){
     container.innerHTML =
       card("🔫 Waffe", weapon) +
       card("🥽 Helm", helmet) +
-      card("🎧 Kopfhörer", selectedHeadphones) +
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
