@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Kein Konflikt + Random Map</title>
+<title>EFT Random Loadout Generator – Mit Attachments</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -51,6 +51,9 @@ function card(title, item) {
 
 function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
 
+// Zufällige Attachments 0-10
+function getRandomAttachments() { return Math.floor(Math.random()*11); }
+
 async function fetchAllItems() {
   const res = await fetch(API,{
     method:"POST",
@@ -87,30 +90,19 @@ async function generateLoadout(forced=null){
     let rig = null;
     let armor = null;
 
-    // Entscheidung: zuerst Rig oder Armor
     if(Math.random()<0.5){
-      // Rig zuerst
       rig = pick(armoredRigs.concat(normalRigs));
-      if(rig.name.toLowerCase().includes("armored")){
-        armor = null; // Armored Rig → keine Armor
-      } else {
-        armor = pick(heavyArmor.concat(lightArmor));
-        if(armor && armor.name.toLowerCase().includes("armor")){
-          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
-        }
-      }
-    }else{
-      // Armor zuerst
+      armor = rig.name.toLowerCase().includes("armored") ? null : pick(heavyArmor.concat(lightArmor));
+    } else {
       armor = pick(heavyArmor.concat(lightArmor));
-      if(armor && armor.name.toLowerCase().includes("armor")){
-        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
-      } else {
-        rig = pick(armoredRigs.concat(normalRigs));
-      }
+      rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
     }
 
     // Zufällige Map
     const map = pick(maps);
+
+    // Zufällige Attachments
+    const attachments = getRandomAttachments();
 
     currentLoadout = {
       weapon: weapon?.id||'',
@@ -118,7 +110,8 @@ async function generateLoadout(forced=null){
       armor: armor?.id||'',
       rig: rig?.id||'',
       backpack: backpack?.id||'',
-      map: map
+      map: map,
+      attachments: attachments
     };
 
     container.innerHTML =
@@ -127,7 +120,8 @@ async function generateLoadout(forced=null){
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
-      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>`;
+      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
+      `<div class="item"><h3>🎲 Attachments</h3><div>${attachments}</div></div>`;
 
   }catch(e){
     container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
@@ -148,6 +142,8 @@ const params = new URLSearchParams(window.location.search);
 if(params.has("loadout")){
   try{ const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
   catch{ generateLoadout(); }
+}else{
+  generateLoadout();
 }
 </script>
 
