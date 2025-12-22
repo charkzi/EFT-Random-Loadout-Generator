@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Mit Masken</title>
+<title>EFT Random Loadout Generator – Armor/Rig Check</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -50,22 +50,14 @@ function toggleTheme() {
 }
 
 // GraphQL fetch
-async function fetchItemsByType(type) {
-  try {
-    const res = await fetch(API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: `query { items(filter:{type:${type}}) { id name shortName iconLink types } }`
-      })
-    });
-    const json = await res.json();
-    if (json.errors) throw new Error("GraphQL Fehler");
-    return json.data.items;
-  } catch (e) {
-    console.error(`Fehler beim Laden von ${type}:`, e);
-    return [];
-  }
+async function fetchAllItems() {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ query: "query { items { id name shortName iconLink types } }" })
+  });
+  const json = await res.json();
+  return json.data.items;
 }
 
 function pick(arr) {
@@ -93,33 +85,28 @@ async function generateLoadout(forced=null) {
   container.innerHTML = "⏳ Lade Loadout…";
 
   try {
-    // Lade alle Items einmal
-    if (!allItems) {
-      const res = await fetch(API, {
-        method: "POST",
-        headers: {"Content-Type":"application/json"},
-        body: JSON.stringify({ query: "query { items { id name shortName iconLink types } }" })
-      });
-      const json = await res.json();
-      allItems = json.data.items;
-    }
+    if (!allItems) allItems = await fetchAllItems();
 
-    // Holen der Items pro Kategorie mit Fallbacks
     let weapons = fallbackFilter(allItems, ["gun"]);
     let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
     let masks = fallbackFilter(allItems, ["faceCover", "mask"]);
-    if (!masks.length) masks = fallbackMasks; // Fallback verwenden, falls leer
+    if (!masks.length) masks = fallbackMasks;
     let armors = fallbackFilter(allItems, ["armor"]);
     let rigs = fallbackFilter(allItems, ["rig"]);
     let backpacks = fallbackFilter(allItems, ["backpack"]);
 
-    // Pick items oder forced
     const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
     const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
     const mask = forced?.mask ? masks.find(m => m.id===forced.mask) : pick(masks);
     const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
-    const rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
+    let rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
     const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
+
+    // 🔹 Konfliktprüfung: keine schwere Rüstung + armored Rig gleichzeitig
+    if (armor?.name?.toLowerCase().includes("armor") && rig?.name?.toLowerCase().includes("armored")) {
+      const nonArmoredRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
+      rig = pick(nonArmoredRigs) || rig; // fallback auf ursprüngliches Rig, falls keine Alternative
+    }
 
     currentLoadout = {
       weapon: weapon?.id || "",
