@@ -18,7 +18,7 @@ body.light {
 }
 
 body {
-  background: #000000; /* Schwarz */
+  background: #000000;
   color: var(--text);
   font-family: Arial, sans-serif;
   text-align: center;
@@ -97,7 +97,6 @@ function toggleTheme() {
     document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// Zufällige Map
 const maps = ["Customs","Woods","Shoreline","Interchange","The Lab","Reserve","Lighthouse","Ground Zero","Streets of Tarkov"];
 function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
 
@@ -140,6 +139,7 @@ async function generateLoadout(forced=null){
     const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
     const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
 
+    // Kategorien aufteilen
     const armoredRigs = rigs.filter(r => r.name.toLowerCase().includes("armored") || r.name.toLowerCase().includes("plate carrier"));
     const normalRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored") && !r.name.toLowerCase().includes("plate carrier"));
     const heavyArmor = armors.filter(a => a.name.toLowerCase().includes("armor"));
@@ -148,21 +148,17 @@ async function generateLoadout(forced=null){
     let rig = null;
     let armor = null;
 
-    // Zufällig zuerst Rig oder Armor auswählen
+    // Zufällig Rig oder Armor zuerst
     if(Math.random() < 0.5){
-        rig = pick(rigs);
-        if(rig.name.toLowerCase().includes("armored") || rig.name.toLowerCase().includes("plate carrier")){
+        rig = pick(rigs); // kann armored/plate carrier sein
+        if(armoredRigs.includes(rig)){
             armor = { id:null, name:"Keine", shortName:"Keine", iconLink:null };
         } else {
             armor = pick(heavyArmor.concat(lightArmor));
         }
     } else {
-        armor = pick(heavyArmor.concat(lightArmor));
-        if(armor.name.toLowerCase().includes("armor")){
-            rig = pick(normalRigs);
-        } else {
-            rig = pick(rigs);
-        }
+        armor = pick(heavyArmor.concat(lightArmor)); // nur echte Armor-Kategorie
+        rig = pick(normalRigs); // kein armored Rig oder Plate Carrier
     }
 
     const map = pick(maps);
@@ -213,3 +209,4 @@ if(params.has("loadout")){
 
 </body>
 </html>
+
