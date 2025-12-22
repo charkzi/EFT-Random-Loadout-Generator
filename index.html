@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Visuelle Attachments</title>
+<title>EFT Random Loadout Generator – Visuelle Attachments mit Tooltip</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; --attachment-filled:#4caf50; --attachment-empty:#555; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; --attachment-filled:#4caf50; --attachment-empty:#ccc; }
@@ -13,8 +13,23 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 .item { background:var(--card); padding:10px; border-radius:8px; }
 .item img { width:100%; max-height:160px; object-fit:contain; }
 .attachments { display:flex; justify-content:center; gap:4px; margin-top:6px; }
-.attachments div { width:16px; height:16px; border-radius:3px; background:var(--attachment-empty); }
+.attachments div { width:16px; height:16px; border-radius:3px; background:var(--attachment-empty); position:relative; }
 .attachments .filled { background:var(--attachment-filled); }
+/* Tooltip */
+.attachments div[data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 125%; 
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  z-index: 10;
+}
 </style>
 </head>
 <body>
@@ -52,7 +67,7 @@ function getRandomAttachments() { return Math.floor(Math.random()*11); }
 function renderAttachments(count) {
   let html = '<div class="attachments">';
   for(let i=0;i<10;i++){
-    html += `<div class="${i<count?'filled':''}"></div>`;
+    html += `<div class="${i<count?'filled':''}" data-tooltip="Attachments: ${count}"></div>`;
   }
   html += '</div>';
   return html;
@@ -92,7 +107,7 @@ async function generateLoadout(forced=null){
     const backpacks = allItems.backpacks;
     const headphones = allItems.headphones;
 
-    // Rig/Armor Konflikt: Armored Rigs erhalten keine zusätzliche Armor
+    // Rig/Armor Konflikt
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
     const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
     const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
@@ -100,9 +115,8 @@ async function generateLoadout(forced=null){
 
     let rig = pick(rigs);
     let armor = null;
-
     if(rig.name.toLowerCase().includes("armored")){
-      armor = null; // Armored Rig → keine Armor
+      armor = null;
     } else {
       armor = pick(heavyArmor.concat(lightArmor));
     }
@@ -162,3 +176,4 @@ if(params.has("loadout")){
 
 </body>
 </html>
+
