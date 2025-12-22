@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Stabil</title>
+<title>EFT Random Loadout Generator – Stabil mit Fallbacks</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -30,6 +30,7 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 
 <script>
 const API = "https://api.tarkov.dev/graphql";
+let allItems = null;
 let currentLoadout = null;
 
 // Theme Toggle
@@ -65,7 +66,7 @@ function pick(arr) {
 }
 
 function card(title, item) {
-  if (!item) return "";
+  if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
   return `
     <div class="item">
       <h3>${title}</h3>
@@ -74,45 +75,65 @@ function card(title, item) {
     </div>`;
 }
 
+// Fallback: suche Items mit alternativen Typen
+function fallbackFilter(items, types) {
+  return items.filter(i => i.types?.some(t => types.includes(t)));
+}
+
 // Generate loadout
 async function generateLoadout(forced=null) {
   const container = document.getElementById("loadout");
   container.innerHTML = "⏳ Lade Loadout…";
 
-  // Lade alle Kategorien einzeln
-  const [weapons, helmets, masks, armors, rigs, backpacks] = await Promise.all([
-    fetchItemsByType("gun"),
-    fetchItemsByType("headwear"),
-    fetchItemsByType("faceCover"),
-    fetchItemsByType("armor"),
-    fetchItemsByType("rig"),
-    fetchItemsByType("backpack")
-  ]);
+  try {
+    // Lade alle Items einmal
+    if (!allItems) {
+      const res = await fetch(API, {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ query: "query { items { id name shortName iconLink types } }" })
+      });
+      const json = await res.json();
+      allItems = json.data.items;
+    }
 
-  // Pick items oder forced
-  const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
-  const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
-  const mask = forced?.mask ? masks.find(m => m.id===forced.mask) : pick(masks);
-  const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
-  const rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
-  const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
+    // Holen der Items pro Kategorie mit Fallbacks
+    let weapons = fallbackFilter(allItems, ["gun"]);
+    let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
+    let masks = fallbackFilter(allItems, ["faceCover", "mask"]);
+    let armors = fallbackFilter(allItems, ["armor"]);
+    let rigs = fallbackFilter(allItems, ["rig"]);
+    let backpacks = fallbackFilter(allItems, ["backpack"]);
 
-  currentLoadout = {
-    weapon: weapon?.id || "",
-    helmet: helmet?.id || "",
-    mask: mask?.id || "",
-    armor: armor?.id || "",
-    rig: rig?.id || "",
-    backpack: backpack?.id || ""
-  };
+    // Pick items oder forced
+    const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
+    const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
+    const mask = forced?.mask ? masks.find(m => m.id===forced.mask) : pick(masks);
+    const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
+    const rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
+    const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
 
-  container.innerHTML =
-    card("🔫 Waffe", weapon) +
-    card("🥽 Helm", helmet) +
-    card("😷 Maske", mask) +
-    card("🛡️ Rüstung", armor) +
-    card("🎒 Rig", rig) +
-    card("🎒 Rucksack", backpack);
+    currentLoadout = {
+      weapon: weapon?.id || "",
+      helmet: helmet?.id || "",
+      mask: mask?.id || "",
+      armor: armor?.id || "",
+      rig: rig?.id || "",
+      backpack: backpack?.id || ""
+    };
+
+    container.innerHTML =
+      card("🔫 Waffe", weapon) +
+      card("🥽 Helm", helmet) +
+      card("😷 Maske", mask) +
+      card("🛡️ Rüstung", armor) +
+      card("🎒 Rig", rig) +
+      card("🎒 Rucksack", backpack);
+
+  } catch (e) {
+    container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
+    console.error(e);
+  }
 }
 
 // Share-Link
