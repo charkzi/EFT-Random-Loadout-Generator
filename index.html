@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator V4</title>
+<title>EFT Random Loadout Generator V5</title>
 <style>
   body { background: #0b0b0b; color: #eaeaea; font-family: Arial, sans-serif; text-align: center; transition: all 0.3s; }
   button { padding: 14px 28px; font-size: 18px; cursor: pointer; margin: 20px; }
@@ -17,22 +17,22 @@
 </head>
 <body>
 
-<h1>🎯 Escape from Tarkov – Random Loadout V4</h1>
+<h1>🎯 Escape from Tarkov – Random Loadout V5</h1>
 <button onclick="generateLoadout()">🔄 Neues Loadout</button>
 <div class="toggle" onclick="toggleTheme()">🌓 Dark/Light</div>
 
 <div class="grid" id="loadout"></div>
 
 <script>
-// --- Fallback Set (umfangreich)
+// --- Fallback Set
 function loadFallbackData() {
   return [
     // Waffen
-    { id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
-    { id:"m4a1", name:"M4A1", caliber:"5.56x45mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
-    { id:"mp5", name:"HK MP5", caliber:"9x19mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
-    { id:"vss", name:"VSS Vintorez", caliber:"9x39mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser"] },
-    { id:"svd", name:"SVD Dragunov", caliber:"7.62x54R", types:["gun"], attachments:["Scope","Suppressor","Grip"] },
+    { id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm", types:["gun"] },
+    { id:"m4a1", name:"M4A1", caliber:"5.56x45mm", types:["gun"] },
+    { id:"mp5", name:"HK MP5", caliber:"9x19mm", types:["gun"] },
+    { id:"vss", name:"VSS Vintorez", caliber:"9x39mm", types:["gun"] },
+    { id:"svd", name:"SVD Dragunov", caliber:"7.62x54R", types:["gun"] },
 
     // Munition
     { id:"545bp", name:"5.45×39mm BP", caliber:"5.45x39mm", types:["ammo"] },
@@ -100,19 +100,12 @@ function generateLoadout() {
   let backpack = pick(backpacks);
   let map = pick(maps);
 
-  // Waffen-Attachments zufällig auswählen
-  let attachmentsHTML = "";
-  if (weapon.attachments) {
-    weapon.attachments.forEach(att => {
-      if (Math.random() < 0.5) { // 50% Chance für jedes Attachment
-        attachmentsHTML += card(att, {name: att});
-      }
-    });
-  }
+  // Random Zahl 0-10 anstelle von Attachments
+  let randomAttachments = Math.floor(Math.random() * 11); // 0 bis 10
 
   document.getElementById("loadout").innerHTML = `
     ${card("🔫 Waffe", weapon)}
-    ${attachmentsHTML}
+    ${card("🎲 Random Attachment-Wert", {name: randomAttachments})}
     ${selectedAmmo ? card("💥 Munition", selectedAmmo) : ""}
     ${card("🛡️ Armor", armorChoice || {name:"Keine zusätzliche Armor"})}
     ${card("🎒 Rig", rig)}
