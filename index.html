@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator v3.0</title>
+<title>EFT Random Loadout Generator v4.0</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -34,7 +34,7 @@ let currentLoadout=null;
 
 // Theme
 const savedTheme=localStorage.getItem("theme");
-if(savedTheme==="light")document.body.classList.add("light");
+if(savedTheme==="light") document.body.classList.add("light");
 function toggleTheme(){
   document.body.classList.toggle("light");
   localStorage.setItem("theme", document.body.classList.contains("light")?"light":"dark");
@@ -42,36 +42,99 @@ function toggleTheme(){
 
 // GraphQL Query
 async function query(q){
-  const res=await fetch(API,{
+  const res = await fetch(API,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({query:q})
+    body: JSON.stringify({query:q})
   });
-  const json=await res.json();
+  const json = await res.json();
   if(json.errors) throw new Error(json.errors[0].message);
   return json.data;
 }
 
-const pick=a=>a[Math.floor(Math.random()*a.length)];
-const card=(title,item)=>item?`
-<div class="item">
-<h3>${title}</h3>
-${item.imageLink?`<img src="${item.imageLink}">`:``}
-<div>${item.name}</div>
-</div>`:"";
+const pick = arr => arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
+const card = (title,item) => item ? `<div class="item"><h3>${title}</h3>${item.imageLink?`<img src="${item.imageLink}">`:''}<div>${item.name}</div></div>` : '';
 
+// Loadout
 async function generateLoadout(forced=null){
-  const container=document.getElementById("loadout");
-  container.innerHTML="⏳ Lade…";
+  const container = document.getElementById("loadout");
+  container.innerHTML = "⏳ Lade…";
+
   try{
-    const data=await query(`
-    {
-      weapons: items(types:[gun]) { name imageLink slots{name filters{allowedItems{name imageLink}}} }
-      helmets: items(types:[headwear]) { name imageLink }
-      masks: items(types:[faceCover]) { name imageLink }
-      armors: items(types:[armor]) { name imageLink }
-      rigs: items(types:[rig]) { name imageLink }
-      backpacks: items(types:[backpack]) { name imageLink }
-      ammo: items(types:[ammo]) { name imageLink name }
+    const data = await query(`
+      {
+        weapons: items(types:[gun]) { name imageLink slots{name filters{allowedItems{name imageLink}}} }
+        helmets: items(types:[headwear]) { name imageLink }
+        masks: items(types:[faceCover]) { name imageLink }
+        armors: items(types:[armor]) { name imageLink }
+        rigs: items(types:[rig]) { name imageLink }
+        backpacks: items(types:[backpack]) { name imageLink }
+        ammo: items(types:[ammo]) { name imageLink name }
+      }
+    `);
+
+    const weapon = forced?.weapon ? data.weapons.find(w=>w.name===forced.weapon) : pick(data.weapons) || {};
+    const helmet = forced?.helmet ? data.helmets.find(h=>h.name===forced.helmet) : pick(data.helmets) || {};
+    const mask = forced?.mask ? data.masks.find(m=>m.name===forced.mask) : pick(data.masks) || {};
+    const armor = forced?.armor ? data.armors.find(a=>a.name===forced.armor) : pick(data.armors) || {};
+    const rig = forced?.rig ? data.rigs.find(r=>r.name===forced.rig) : pick(data.rigs) || {};
+    const backpack = forced?.backpack ? data.backpacks.find(b=>b.name===forced.backpack) : pick(data.backpacks) || {};
+    const ammo = pick(data.ammo) || {};
+
+    // Attachments
+    let attachmentsHTML = "";
+    if(Array.isArray(weapon.slots)){
+      weapon.slots.forEach(slot=>{
+        if(slot.filters?.allowedItems?.length){
+          attachmentsHTML += card(slot.name, pick(slot.filters.allowedItems));
+        }
+      });
     }
 
+    currentLoadout = {
+      weapon: weapon.name || "",
+      helmet: helmet.name || "",
+      mask: mask.name || "",
+      armor: armor.name || "",
+      rig: rig.name || "",
+      backpack: backpack.name || ""
+    };
+
+    container.innerHTML =
+      card("🔫 Waffe", weapon) +
+      attachmentsHTML +
+      card("💥 Munition", ammo) +
+      card("🥽 Helm", helmet) +
+      card("😷 Maske", mask) +
+      card("🛡️ Rüstung", armor) +
+      card("🎒 Rig", rig) +
+      card("🎒 Rucksack", backpack);
+
+  }catch(e){
+    container.innerHTML = "❌ Fehler beim Laden der Daten";
+    console.error(e);
+  }
+}
+
+// Share-Link
+function generateShareLink(){
+  if(!currentLoadout) return;
+  const encoded = btoa(JSON.stringify(currentLoadout));
+  const url = `${location.origin}${location.pathname}?loadout=${encoded}`;
+  document.getElementById("shareLink").value = url;
+}
+
+// Load shared loadout
+const params = new URLSearchParams(window.location.search);
+if(params.has("loadout")){
+  try{
+    const decoded = JSON.parse(atob(params.get("loadout")));
+    generateLoadout(decoded);
+  }catch{
+    generateLoadout();
+  }
+}
+</script>
+
+</body>
+</html>
