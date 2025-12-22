@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator v4.0</title>
+<title>EFT Random Loadout Generator v4.1</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -69,7 +69,6 @@ async function generateLoadout(forced=null){
         armors: items(types:[armor]) { name imageLink }
         rigs: items(types:[rig]) { name imageLink }
         backpacks: items(types:[backpack]) { name imageLink }
-        ammo: items(types:[ammo]) { name imageLink name }
       }
     `);
 
@@ -79,7 +78,6 @@ async function generateLoadout(forced=null){
     const armor = forced?.armor ? data.armors.find(a=>a.name===forced.armor) : pick(data.armors) || {};
     const rig = forced?.rig ? data.rigs.find(r=>r.name===forced.rig) : pick(data.rigs) || {};
     const backpack = forced?.backpack ? data.backpacks.find(b=>b.name===forced.backpack) : pick(data.backpacks) || {};
-    const ammo = pick(data.ammo) || {};
 
     // Attachments
     let attachmentsHTML = "";
@@ -103,7 +101,6 @@ async function generateLoadout(forced=null){
     container.innerHTML =
       card("🔫 Waffe", weapon) +
       attachmentsHTML +
-      card("💥 Munition", ammo) +
       card("🥽 Helm", helmet) +
       card("😷 Maske", mask) +
       card("🛡️ Rüstung", armor) +
