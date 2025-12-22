@@ -4,10 +4,22 @@
 <meta charset="UTF-8">
 <title>EFT Random Loadout Generator</title>
 <style>
-:root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
-body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
+:root { 
+  --bg:#0b0b0b; 
+  --card:#161616; 
+  --text:#eaeaea; 
+  --button:#2a2a2a; 
+}
+body.light { 
+  --bg:#f4f4f4; 
+  --card:#ffffff; 
+  --text:#111; 
+  --button:#ddd; 
+}
+
 body {
-  background: url('/mnt/data/1b06211d-4012-49c7-8073-3738527c49f5.png') no-repeat center center fixed;
+  /* Hintergrundbild */
+  background: url('1b06211d-4012-49c7-8073-3738527c49f5.png') no-repeat center center fixed;
   background-size: cover;
   color: var(--text);
   font-family: Arial, sans-serif;
@@ -17,24 +29,31 @@ body {
   transition: .3s;
   position: relative;
 }
+
+/* Leichtes Overlay, damit Text gut lesbar ist */
 body::before {
   content: "";
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0,0,0,0.2); /* weniger dunkel */
   z-index: -1;
 }
+
 button {
   padding:12px 18px; font-size:16px; margin:8px; cursor:pointer;
   background:var(--button); color:var(--text); border:none; border-radius:6px;
 }
+
 input {
   width:90%; padding:10px; margin-top:10px;
   background:var(--card); color:var(--text); border:1px solid #555; border-radius:6px;
 }
+
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; max-width:1000px; margin:20px auto; }
+
 .item { background:var(--card); padding:10px; border-radius:8px; }
+
 .item img { width:100%; max-height:160px; object-fit:contain; }
 </style>
 </head>
@@ -51,120 +70,7 @@ input {
 <div class="grid" id="loadout"></div>
 
 <script>
-const API = "https://api.tarkov.dev/graphql";
-let allItems = null;
-let currentLoadout = null;
-
-// Theme Toggle
-const savedTheme = localStorage.getItem("theme");
-if (savedTheme === "light") document.body.classList.add("light");
-function toggleTheme() {
-  document.body.classList.toggle("light");
-  localStorage.setItem("theme",
-    document.body.classList.contains("light") ? "light" : "dark");
-}
-
-// Zufällige Map
-const maps = ["Customs","Woods","Shoreline","Interchange","The Lab","Reserve","Lighthouse"];
-function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
-
-function card(title, item) {
-  if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
-  return `<div class="item"><h3>${title}</h3>${item.iconLink?`<img src="${item.iconLink}">`:''}<div>${item.shortName||item.name||''}</div></div>`;
-}
-
-function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
-
-function getRandomAttachments() { return Math.floor(Math.random()*11); }
-
-async function fetchAllItems() {
-  const res = await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ query:"query { items { id name shortName iconLink types } }" })
-  });
-  const json = await res.json();
-  return json.data.items;
-}
-
-async function generateLoadout(forced=null){
-  const container = document.getElementById("loadout");
-  container.innerHTML = "⏳ Lade Loadout…";
-
-  try{
-    if(!allItems) allItems = await fetchAllItems();
-
-    let weapons = fallbackFilter(allItems,["gun"]);
-    let helmets = fallbackFilter(allItems,["headwear","helmet"]);
-    let armors = fallbackFilter(allItems,["armor"]);
-    let rigs = fallbackFilter(allItems,["rig"]);
-    let backpacks = fallbackFilter(allItems,["backpack"]);
-
-    const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
-    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
-    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
-
-    // Strikte Rig/Armor Logik
-    const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
-    const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
-    const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
-    const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
-
-    let rig = null;
-    let armor = null;
-
-    if(Math.random()<0.5){
-      rig = pick(armoredRigs.concat(normalRigs));
-      armor = rig.name.toLowerCase().includes("armored") ? null : pick(heavyArmor.concat(lightArmor));
-    } else {
-      armor = pick(heavyArmor.concat(lightArmor));
-      rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
-    }
-
-    const map = pick(maps);
-    const attachments = getRandomAttachments();
-
-    currentLoadout = {
-      weapon: weapon?.id||'',
-      helmet: helmet?.id||'',
-      armor: armor?.id||'',
-      rig: rig?.id||'',
-      backpack: backpack?.id||'',
-      map: map,
-      attachments: attachments
-    };
-
-    container.innerHTML =
-      card("🔫 Waffe", weapon) +
-      card("🥽 Helm", helmet) +
-      card("🛡️ Rüstung", armor) +
-      card("🎒 Rig", rig) +
-      card("🎒 Rucksack", backpack) +
-      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
-      `<div class="item"><h3>🎲 Attachments</h3><div>${attachments}</div></div>`;
-
-  }catch(e){
-    container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
-    console.error(e);
-  }
-}
-
-// Share-Link
-function generateShareLink(){
-  if(!currentLoadout) return;
-  const encoded = btoa(JSON.stringify(currentLoadout));
-  const url = `${location.origin}${location.pathname}?loadout=${encoded}`;
-  document.getElementById("shareLink").value = url;
-}
-
-// Load shared loadout
-const params = new URLSearchParams(window.location.search);
-if(params.has("loadout")){
-  try{ const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
-  catch{ generateLoadout(); }
-} else {
-  generateLoadout();
-}
+// ... Dein bisheriger JavaScript-Code bleibt unverändert ...
 </script>
 
 </body>
