@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator v4.1</title>
+<title>EFT Random Loadout Generator – stabile Version</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -63,7 +63,7 @@ async function generateLoadout(forced=null){
   try{
     const data = await query(`
       {
-        weapons: items(types:[gun]) { name imageLink slots{name filters{allowedItems{name imageLink}}} }
+        weapons: items(types:[gun]) { name imageLink }
         helmets: items(types:[headwear]) { name imageLink }
         masks: items(types:[faceCover]) { name imageLink }
         armors: items(types:[armor]) { name imageLink }
@@ -79,16 +79,6 @@ async function generateLoadout(forced=null){
     const rig = forced?.rig ? data.rigs.find(r=>r.name===forced.rig) : pick(data.rigs) || {};
     const backpack = forced?.backpack ? data.backpacks.find(b=>b.name===forced.backpack) : pick(data.backpacks) || {};
 
-    // Attachments
-    let attachmentsHTML = "";
-    if(Array.isArray(weapon.slots)){
-      weapon.slots.forEach(slot=>{
-        if(slot.filters?.allowedItems?.length){
-          attachmentsHTML += card(slot.name, pick(slot.filters.allowedItems));
-        }
-      });
-    }
-
     currentLoadout = {
       weapon: weapon.name || "",
       helmet: helmet.name || "",
@@ -100,7 +90,6 @@ async function generateLoadout(forced=null){
 
     container.innerHTML =
       card("🔫 Waffe", weapon) +
-      attachmentsHTML +
       card("🥽 Helm", helmet) +
       card("😷 Maske", mask) +
       card("🛡️ Rüstung", armor) +
