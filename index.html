@@ -103,7 +103,11 @@ function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr
 
 function card(title, item) {
   if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
-  return `<div class="item"><h3>${title}</h3>${item.name !== "Keine" && item.iconLink ? `<img src="${item.iconLink}">` : ''}<div>${item.shortName||item.name||''}</div></div>`;
+  return `<div class="item">
+            <h3>${title}</h3>
+            ${item.name !== "Keine" && item.iconLink ? `<img src="${item.iconLink}">` : ''}
+            <div>${item.shortName || item.name || ''}</div>
+          </div>`;
 }
 
 function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
@@ -136,36 +140,30 @@ async function generateLoadout(forced=null){
     const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
     const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
 
-    const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
-    const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
-    const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
-    const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
+    const armoredRigs = rigs.filter(r => r.name.toLowerCase().includes("armored"));
+    const normalRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
+    const heavyArmor = armors.filter(a => a.name.toLowerCase().includes("armor"));
+    const lightArmor = armors.filter(a => !a.name.toLowerCase().includes("armor"));
 
-    let rig = null;
+    let rig = pick(rigs);
     let armor = null;
 
-    // Neue Logik: Keine Rüstung bei armored Rig
-    if(Math.random()<0.5){
-      rig = pick(armoredRigs.concat(normalRigs));
-      if(rig.name.toLowerCase().includes("armored")){
-        armor = { name: "Keine" }; // Keine Rüstung, weil Rig bereits Platten enthält
-      } else {
-        armor = pick(heavyArmor.concat(lightArmor));
-      }
+    // Wenn das Rig armored ist, keine Armor auswählen
+    if (rig.name.toLowerCase().includes("armored")) {
+        armor = { id: null, name: "Keine", shortName: "Keine", iconLink: null };
     } else {
-      armor = pick(heavyArmor.concat(lightArmor));
-      rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
+        armor = pick(heavyArmor.concat(lightArmor));
     }
 
     const map = pick(maps);
     const attachments = getRandomAttachments();
 
     currentLoadout = {
-      weapon: weapon?.id||'',
-      helmet: helmet?.id||'',
-      armor: armor?.id||'',
-      rig: rig?.id||'',
-      backpack: backpack?.id||'',
+      weapon: weapon?.id || '',
+      helmet: helmet?.id || '',
+      armor: armor?.id || '',
+      rig: rig?.id || '',
+      backpack: backpack?.id || '',
       map: map,
       attachments: attachments
     };
