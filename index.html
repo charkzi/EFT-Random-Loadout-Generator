@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Vollständig</title>
+<title>EFT Random Loadout Generator – Stabil</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -88,13 +88,13 @@ async function generateLoadout(forced = null) {
       allItems = await fetchAllItems();
     }
 
-    // Filter items by correct types
-    const weapons = allItems.filter(i => i.types?.includes("gun"));
-    const helmets = allItems.filter(i => i.types?.includes("headwear"));
-    const masks = allItems.filter(i => i.types?.includes("faceCover"));
-    const armors = allItems.filter(i => i.types?.includes("armor"));
-    const rigs = allItems.filter(i => i.types?.includes("rig"));
-    const backpacks = allItems.filter(i => i.types?.includes("backpack"));
+    // Robust filter using .some() to handle multiple types
+    const weapons = allItems.filter(i => i.types?.some(t => t === "gun"));
+    const helmets = allItems.filter(i => i.types?.some(t => t === "headwear"));
+    const masks = allItems.filter(i => i.types?.some(t => t === "faceCover"));
+    const armors = allItems.filter(i => i.types?.some(t => t === "armor"));
+    const rigs = allItems.filter(i => i.types?.some(t => t === "rig"));
+    const backpacks = allItems.filter(i => i.types?.some(t => t === "backpack"));
 
     const weapon = forced?.weapon ? weapons.find(w => w.id === forced.weapon) : pick(weapons);
     const helmet = forced?.helmet ? helmets.find(h => h.id === forced.helmet) : pick(helmets);
