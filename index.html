@@ -2,18 +2,18 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – stabile Version</title>
+<title>EFT Random Loadout Generator – funktionstüchtig</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
 }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
-body { background:var(--bg); color:var(--text); font-family:Arial,sans-serif; text-align:center; margin:0; padding-bottom:40px; transition:.3s; }
-button { padding:14px 22px; font-size:16px; margin:6px; cursor:pointer; background:var(--button); color:var(--text); border:none; border-radius:8px; }
-input { width:80%; padding:10px; margin-top:10px; background:var(--card); color:var(--text); border:1px solid #555; }
-.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; max-width:1200px; margin:20px auto; padding:0 10px; }
-.item { background:var(--card); padding:12px; border-radius:10px; }
-.item img { width:100%; max-height:180px; object-fit:contain; }
+body { background:var(--bg); color:var(--text); font-family:Arial,sans-serif; text-align:center; margin:0; padding:0 10px 40px; transition:.3s; }
+button { padding:12px 18px; font-size:16px; margin:8px; cursor:pointer; background:var(--button); color:var(--text); border:none; border-radius:6px; }
+input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:var(--text); border:1px solid #555; border-radius:6px;}
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; max-width:1000px; margin:20px auto; }
+.item { background:var(--card); padding:10px; border-radius:8px; }
+.item img { width:100%; max-height:160px; object-fit:contain; }
 </style>
 </head>
 <body>
@@ -22,101 +22,140 @@ input { width:80%; padding:10px; margin-top:10px; background:var(--card); color:
 
 <button onclick="generateLoadout()">🔄 Neues Loadout</button>
 <button onclick="generateShareLink()">🔗 Share-Link</button>
-<button onclick="toggleTheme()">🌗 Dark / Light</button>
+<button onclick="toggleTheme()">🌗 Dark/Light</button>
 <br>
 <input id="shareLink" readonly placeholder="Share-Link">
 
 <div class="grid" id="loadout"></div>
 
 <script>
-const API="https://api.tarkov.dev/graphql";
-let currentLoadout=null;
+const API = "https://api.tarkov.dev/graphql";
+let currentLoadout = null;
 
-// Theme
-const savedTheme=localStorage.getItem("theme");
-if(savedTheme==="light") document.body.classList.add("light");
-function toggleTheme(){
+// Theme Toggle
+const savedTheme = localStorage.getItem("theme");
+if (savedTheme === "light") document.body.classList.add("light");
+function toggleTheme() {
   document.body.classList.toggle("light");
-  localStorage.setItem("theme", document.body.classList.contains("light")?"light":"dark");
+  localStorage.setItem("theme",
+    document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// GraphQL Query
-async function query(q){
-  const res = await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({query:q})
+// Safe GraphQL Request
+async function query(q) {
+  const res = await fetch(API, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ query: q })
   });
   const json = await res.json();
-  if(json.errors) throw new Error(json.errors[0].message);
+  if (json.errors) throw new Error("GraphQL Fehler");
   return json.data;
 }
 
-const pick = arr => arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
-const card = (title,item) => item ? `<div class="item"><h3>${title}</h3>${item.imageLink?`<img src="${item.imageLink}">`:''}<div>${item.name}</div></div>` : '';
+function pick(arr) {
+  return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
+}
 
-// Loadout
-async function generateLoadout(forced=null){
+function card(title, item) {
+  if (!item) return "";
+  return `
+    <div class="item">
+      <h3>${title}</h3>
+      ${item.iconLink ? `<img src="${item.iconLink}">` : ""}
+      <div>${item.shortName || item.name || ""}</div>
+    </div>`;
+}
+
+async function generateLoadout(forced=null) {
   const container = document.getElementById("loadout");
-  container.innerHTML = "⏳ Lade…";
+  container.innerHTML = "⏳ Lade Loadout…";
 
-  try{
+  try {
     const data = await query(`
-      {
-        weapons: items(types:[gun]) { name imageLink }
-        helmets: items(types:[headwear]) { name imageLink }
-        masks: items(types:[faceCover]) { name imageLink }
-        armors: items(types:[armor]) { name imageLink }
-        rigs: items(types:[rig]) { name imageLink }
-        backpacks: items(types:[backpack]) { name imageLink }
+    {
+      weapons: items(filter:{type:gun}) {
+        id
+        name
+        shortName
+        iconLink
       }
+      helmets: items(filter:{type:headwear}) {
+        id
+        name
+        shortName
+        iconLink
+      }
+      masks: items(filter:{type:faceCover}) {
+        id
+        name
+        shortName
+        iconLink
+      }
+      armor: items(filter:{type:armor}) {
+        id
+        name
+        shortName
+        iconLink
+      }
+      rigs: items(filter:{type:rig}) {
+        id
+        name
+        shortName
+        iconLink
+      }
+      backpacks: items(filter:{type:backpack}) {
+        id
+        name
+        shortName
+        iconLink
+      }
+    }
     `);
 
-    const weapon = forced?.weapon ? data.weapons.find(w=>w.name===forced.weapon) : pick(data.weapons) || {};
-    const helmet = forced?.helmet ? data.helmets.find(h=>h.name===forced.helmet) : pick(data.helmets) || {};
-    const mask = forced?.mask ? data.masks.find(m=>m.name===forced.mask) : pick(data.masks) || {};
-    const armor = forced?.armor ? data.armors.find(a=>a.name===forced.armor) : pick(data.armors) || {};
-    const rig = forced?.rig ? data.rigs.find(r=>r.name===forced.rig) : pick(data.rigs) || {};
-    const backpack = forced?.backpack ? data.backpacks.find(b=>b.name===forced.backpack) : pick(data.backpacks) || {};
+    const weapon = forced?.weapon ? data.weapons.find(w=>w.id===forced.weapon) : pick(data.weapons);
+    const helmet = forced?.helmet ? data.helmets.find(h=>h.id===forced.helmet) : pick(data.helmets);
+    const mask = forced?.mask ? data.masks.find(m=>m.id===forced.mask) : pick(data.masks);
+    const armor = forced?.armor ? data.armor.find(a=>a.id===forced.armor) : pick(data.armor);
+    const rig = forced?.rig ? data.rigs.find(r=>r.id===forced.rig) : pick(data.rigs);
+    const backpack = forced?.backpack ? data.backpacks.find(b=>b.id===forced.backpack) : pick(data.backpacks);
 
     currentLoadout = {
-      weapon: weapon.name || "",
-      helmet: helmet.name || "",
-      mask: mask.name || "",
-      armor: armor.name || "",
-      rig: rig.name || "",
-      backpack: backpack.name || ""
+      weapon: weapon?.id || "",
+      helmet: helmet?.id || "",
+      mask: mask?.id || "",
+      armor: armor?.id || "",
+      rig: rig?.id || "",
+      backpack: backpack?.id || ""
     };
 
     container.innerHTML =
-      card("🔫 Waffe", weapon) +
-      card("🥽 Helm", helmet) +
-      card("😷 Maske", mask) +
-      card("🛡️ Rüstung", armor) +
-      card("🎒 Rig", rig) +
-      card("🎒 Rucksack", backpack);
+      card("🔫 Waffe",weapon) +
+      card("🥽 Helm",helmet) +
+      card("😷 Maske",mask) +
+      card("🛡️ Rüstung",armor) +
+      card("🎒 Rig",rig) +
+      card("🎒 Rucksack",backpack);
 
-  }catch(e){
-    container.innerHTML = "❌ Fehler beim Laden der Daten";
+  } catch (e) {
+    container.innerHTML = "❌ Fehler beim Laden der Daten — API ist momentan nicht erreichbar oder antwortet falsch.";
     console.error(e);
   }
 }
 
-// Share-Link
-function generateShareLink(){
-  if(!currentLoadout) return;
+function generateShareLink() {
+  if (!currentLoadout) return;
   const encoded = btoa(JSON.stringify(currentLoadout));
   const url = `${location.origin}${location.pathname}?loadout=${encoded}`;
   document.getElementById("shareLink").value = url;
 }
 
-// Load shared loadout
 const params = new URLSearchParams(window.location.search);
-if(params.has("loadout")){
-  try{
+if (params.has("loadout")) {
+  try {
     const decoded = JSON.parse(atob(params.get("loadout")));
     generateLoadout(decoded);
-  }catch{
+  } catch {
     generateLoadout();
   }
 }
