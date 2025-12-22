@@ -82,21 +82,27 @@ async function generateLoadout(forced=null) {
 
     let weapons = fallbackFilter(allItems, ["gun"]);
     let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
-    // Masken entfernt
     let armors = fallbackFilter(allItems, ["armor"]);
     let rigs = fallbackFilter(allItems, ["rig"]);
     let backpacks = fallbackFilter(allItems, ["backpack"]);
 
     const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
     const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
-    const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
-    let rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
     const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
 
-    // 🔹 Konfliktprüfung: keine schwere Rüstung + Armored Rig gleichzeitig
-    if (armor?.name?.toLowerCase().includes("armor") && rig?.name?.toLowerCase().includes("armored")) {
-      const nonArmoredRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
-      rig = pick(nonArmoredRigs) || rig; // fallback auf ursprüngliches Rig, falls keine Alternative
+    // 🔹 Rig zuerst auswählen
+    let rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
+    const isArmoredRig = rig?.name?.toLowerCase().includes("armored");
+
+    // 🔹 Rüstung auswählen abhängig vom Rig
+    let armor = null;
+    if (!isArmoredRig) {
+      armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
+      // Wenn Rüstung gewählt wurde, Armored Rigs ausschließen
+      if (armor) {
+        const nonArmoredRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
+        rig = pick(nonArmoredRigs) || rig;
+      }
     }
 
     currentLoadout = {
