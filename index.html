@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Armor/Rig Check</title>
+<title>EFT Random Loadout Generator – Kein Konflikt + ohne Masken</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -32,13 +32,6 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 const API = "https://api.tarkov.dev/graphql";
 let allItems = null;
 let currentLoadout = null;
-
-// Statische Fallback-Masken
-const fallbackMasks = [
-  { name: "Shemagh", shortName: "Shemagh", iconLink: "https://tarkov.dev/item/shemagh.png", id: "mask1" },
-  { name: "Balaclava", shortName: "Balaclava", iconLink: "https://tarkov.dev/item/balaclava.png", id: "mask2" },
-  { name: "Gasmaske", shortName: "Gasmaske", iconLink: "https://tarkov.dev/item/gas_mask.png", id: "mask3" }
-];
 
 // Theme Toggle
 const savedTheme = localStorage.getItem("theme");
@@ -89,20 +82,18 @@ async function generateLoadout(forced=null) {
 
     let weapons = fallbackFilter(allItems, ["gun"]);
     let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
-    let masks = fallbackFilter(allItems, ["faceCover", "mask"]);
-    if (!masks.length) masks = fallbackMasks;
+    // Masken entfernt
     let armors = fallbackFilter(allItems, ["armor"]);
     let rigs = fallbackFilter(allItems, ["rig"]);
     let backpacks = fallbackFilter(allItems, ["backpack"]);
 
     const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
     const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
-    const mask = forced?.mask ? masks.find(m => m.id===forced.mask) : pick(masks);
     const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
     let rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
     const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
 
-    // 🔹 Konfliktprüfung: keine schwere Rüstung + armored Rig gleichzeitig
+    // 🔹 Konfliktprüfung: keine schwere Rüstung + Armored Rig gleichzeitig
     if (armor?.name?.toLowerCase().includes("armor") && rig?.name?.toLowerCase().includes("armored")) {
       const nonArmoredRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
       rig = pick(nonArmoredRigs) || rig; // fallback auf ursprüngliches Rig, falls keine Alternative
@@ -111,7 +102,6 @@ async function generateLoadout(forced=null) {
     currentLoadout = {
       weapon: weapon?.id || "",
       helmet: helmet?.id || "",
-      mask: mask?.id || "",
       armor: armor?.id || "",
       rig: rig?.id || "",
       backpack: backpack?.id || ""
@@ -120,7 +110,6 @@ async function generateLoadout(forced=null) {
     container.innerHTML =
       card("🔫 Waffe", weapon) +
       card("🥽 Helm", helmet) +
-      card("😷 Maske", mask) +
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack);
