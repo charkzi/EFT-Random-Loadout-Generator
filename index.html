@@ -2,8 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator v2.2</title>
-
+<title>EFT Random Loadout Generator v2.3</title>
 <style>
 :root {
   --bg:#0b0b0b;
@@ -64,7 +63,6 @@ input {
 }
 </style>
 </head>
-
 <body>
 
 <h1>🎯 EFT Random Loadout</h1>
@@ -87,8 +85,7 @@ const savedTheme=localStorage.getItem("theme");
 if(savedTheme==="light")document.body.classList.add("light");
 function toggleTheme(){
   document.body.classList.toggle("light");
-  localStorage.setItem("theme",
-    document.body.classList.contains("light")?"light":"dark");
+  localStorage.setItem("theme", document.body.classList.contains("light")?"light":"dark");
 }
 
 /* API */
@@ -132,9 +129,17 @@ async function generateLoadout(forced=null){
 
     const weapon=forced?.weapon?d.weapons.find(w=>w.name===forced.weapon):pick(d.weapons);
 
-    /* Munition passend zur Waffe */
-    const compatibleAmmo=d.ammo.filter(a=>a.ammoType && weapon.caliber && a.ammoType.includes(weapon.caliber));
-    const ammo=compatibleAmmo.length?pick(compatibleAmmo):null;
+    // Munition robust auswählen
+    let ammo=null;
+    if(weapon && weapon.caliber && Array.isArray(d.ammo)){
+      const compatibleAmmo=d.ammo.filter(a=>{
+        return a.ammoType && typeof a.ammoType==="string" &&
+               a.ammoType.toLowerCase().includes(weapon.caliber.toLowerCase());
+      });
+      if(compatibleAmmo.length>0) ammo=pick(compatibleAmmo);
+    }
+    // Fallback: irgendeine Munition
+    if(!ammo && Array.isArray(d.ammo) && d.ammo.length>0) ammo=pick(d.ammo);
 
     const helmet=forced?.helmet?d.helmets.find(h=>h.name===forced.helmet):pick(d.helmets);
     const mask=forced?.mask?d.masks.find(m=>m.name===forced.mask):pick(d.masks);
@@ -143,19 +148,19 @@ async function generateLoadout(forced=null){
     const backpack=forced?.backpack?d.backpacks.find(b=>b.name===forced.backpack):pick(d.backpacks);
 
     let attachmentsHTML="";
-    weapon.slots?.forEach(slot=>{
+    weapon?.slots?.forEach(slot=>{
       if(slot.filters?.allowedItems?.length){
         attachmentsHTML+=card(slot.name,pick(slot.filters.allowedItems));
       }
     });
 
     currentLoadout={
-      weapon:weapon.name,
-      helmet:helmet.name,
-      mask:mask.name,
-      armor:armor.name,
-      rig:rig.name,
-      backpack:backpack.name
+      weapon:weapon?.name||"",
+      helmet:helmet?.name||"",
+      mask:mask?.name||"",
+      armor:armor?.name||"",
+      rig:rig?.name||"",
+      backpack:backpack?.name||""
     };
 
     c.innerHTML=`
@@ -168,6 +173,7 @@ async function generateLoadout(forced=null){
       ${card("🎒 Rig",rig)}
       ${card("🎒 Rucksack",backpack)}
     `;
+
   }catch(e){
     c.innerHTML="❌ Fehler beim Laden der Daten";
     console.error(e);
