@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – stabile Version</title>
+<title>EFT Random Loadout Generator – Vollständig</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -42,7 +42,7 @@ function toggleTheme() {
     document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// Safe GraphQL Request
+// Fetch all items from API
 async function fetchAllItems() {
   const res = await fetch(API, {
     method: "POST",
@@ -88,8 +88,8 @@ async function generateLoadout(forced = null) {
       allItems = await fetchAllItems();
     }
 
-    // filter items by type
-    const weapons = allItems.filter(i => i.types?.includes("weapon"));
+    // Filter items by correct types
+    const weapons = allItems.filter(i => i.types?.includes("gun"));
     const helmets = allItems.filter(i => i.types?.includes("headwear"));
     const masks = allItems.filter(i => i.types?.includes("faceCover"));
     const armors = allItems.filter(i => i.types?.includes("armor"));
