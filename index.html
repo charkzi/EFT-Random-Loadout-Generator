@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator V3</title>
+<title>EFT Random Loadout Generator V4</title>
 <style>
   body { background: #0b0b0b; color: #eaeaea; font-family: Arial, sans-serif; text-align: center; transition: all 0.3s; }
   button { padding: 14px 28px; font-size: 18px; cursor: pointer; margin: 20px; }
@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<h1>🎯 Escape from Tarkov – Random Loadout V3</h1>
+<h1>🎯 Escape from Tarkov – Random Loadout V4</h1>
 <button onclick="generateLoadout()">🔄 Neues Loadout</button>
 <div class="toggle" onclick="toggleTheme()">🌓 Dark/Light</div>
 
@@ -27,79 +27,42 @@
 // --- Fallback Set (umfangreich)
 function loadFallbackData() {
   return [
-    // Waffen (ausgewählte Beispiele, stark erweitert)
-    { id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm", types:["gun"] },
-    { id:"aks74u", name:"AKS‑74U", caliber:"5.45x39mm", types:["gun"] },
-    { id:"akm", name:"AKM", caliber:"7.62x39mm", types:["gun"] },
-    { id:"m4a1", name:"M4A1", caliber:"5.56x45mm", types:["gun"] },
-    { id:"hk416a5", name:"HK416A5", caliber:"5.56x45mm", types:["gun"] },
-    { id:"scar_l", name:"FN SCAR‑L", caliber:"5.56x45mm", types:["gun"] },
-    { id:"mp5", name:"HK MP5", caliber:"9x19mm", types:["gun"] },
-    { id:"mp7", name:"HK MP7", caliber:"4.6x30mm", types:["gun"] },
-    { id:"pp19", name:"PP‑19‑01 Vityaz‑SN", caliber:"9x19mm", types:["gun"] },
-    { id:"uzi", name:"UZI", caliber:"9x19mm", types:["gun"] },
-    { id:"vss", name:"VSS Vintorez", caliber:"9x39mm", types:["gun"] },
-    { id:"svd", name:"SVD Dragunov", caliber:"7.62x54R", types:["gun"] },
-    { id:"rsass", name:"RSASS", caliber:"7.62x51mm", types:["gun"] },
-    { id:"mosin", name:"Mosin Nagant", caliber:"7.62x54R", types:["gun"] },
-    { id:"saiga12", name:"Saiga‑12", caliber:"12/70", types:["gun"] },
+    // Waffen
+    { id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
+    { id:"m4a1", name:"M4A1", caliber:"5.56x45mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
+    { id:"mp5", name:"HK MP5", caliber:"9x19mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser","Magazine"] },
+    { id:"vss", name:"VSS Vintorez", caliber:"9x39mm", types:["gun"], attachments:["Scope","Suppressor","Grip","Laser"] },
+    { id:"svd", name:"SVD Dragunov", caliber:"7.62x54R", types:["gun"], attachments:["Scope","Suppressor","Grip"] },
 
     // Munition
     { id:"545bp", name:"5.45×39mm BP", caliber:"5.45x39mm", types:["ammo"] },
-    { id:"545bs", name:"5.45×39mm BS", caliber:"5.45x39mm", types:["ammo"] },
     { id:"556m855", name:"5.56×45mm M855", caliber:"5.56x45mm", types:["ammo"] },
-    { id:"556m855a1", name:"5.56×45mm M855A1", caliber:"5.56x45mm", types:["ammo"] },
-    { id:"762x39ps", name:"7.62×39mm PS", caliber:"7.62x39mm", types:["ammo"] },
-    { id:"762x39hp", name:"7.62×39mm HP", caliber:"7.62x39mm", types:["ammo"] },
-    { id:"762x54r7n1", name:"7.62×54R 7N1", caliber:"7.62x54R", types:["ammo"] },
-    { id:"762x51m80", name:"7.62×51mm M80", caliber:"7.62x51mm", types:["ammo"] },
     { id:"9x19fmj", name:"9x19mm FMJ", caliber:"9x19mm", types:["ammo"] },
-    { id:"9x19ap", name:"9x19mm AP", caliber:"9x19mm", types:["ammo"] },
     { id:"9x39sp6", name:"9x39mm SP‑6", caliber:"9x39mm", types:["ammo"] },
-    { id:"4.6x30ap", name:"4.6×30mm AP", caliber:"4.6x30mm", types:["ammo"] },
-    { id:"127slug", name:"12/70 Slug", caliber:"12/70", types:["ammo"] },
+    { id:"762x54r7n1", name:"7.62×54R 7N1", caliber:"7.62x54R", types:["ammo"] },
 
     // Armor
     { id:"paca_soft", name:"PACA Soft Armor", types:["armor"] },
     { id:"6b23", name:"6B23 Armor", types:["armor"] },
-    { id:"6b43", name:"6B43 Armor", types:["armor"] },
     { id:"bntizhuk", name:"BNTI Zhuk‑6a Armor", types:["armor"] },
-    { id:"korundvm", name:"Korund‑VM Armor", types:["armor"] },
-    { id:"ulach", name:"ULACH Plate Carrier", types:["armor"] },
-    { id:"hexgrid", name:"Hexgrid Armor", types:["armor"] },
 
     // Rigs
     { id:"avs", name:"Crye AVS", types:["rig"] },
     { id:"blackrock", name:"BlackRock Chest Rig", types:["rig"] },
-    { id:"eagle_rig", name:"Eagle‑Allied Rig", types:["rig"] },
     { id:"wartech_tv110", name:"Wartech TV‑110", types:["rig"] },
-    { id:"tasmanian_mk3", name:"Tasmanian Tiger MKIII", types:["rig"] },
-    { id:"ana_m2", name:"ANA Tactical M2", types:["rig"] },
-    { id:"poyasab", name:"Poyas A + B", types:["rig"] },
 
     // Helme
     { id:"kiver", name:"Kiver Helmet", types:["headwear"] },
     { id:"psh97", name:"PSh‑97 Helmet", types:["headwear"] },
-    { id:"kolpak_1s", name:"Kolpak‑1S Helmet", types:["headwear"] },
-    { id:"airframe", name:"Crye AirFrame", types:["headwear"] },
-    { id:"team_wendy", name:"Team Wendy EXFIL", types:["headwear"] },
 
     // Rucksäcke
     { id:"6sh118", name:"6Sh118 Backpack", types:["backpack"] },
-    { id:"attack2", name:"SSO Attack 2 Backpack", types:["backpack"] },
     { id:"pilgrim", name:"Pilgrim Backpack", types:["backpack"] },
-    { id:"rush100", name:"5.11 RUSH 100 Backpack", types:["backpack"] },
-    { id:"blackjack50", name:"Mystery Ranch Blackjack 50", types:["backpack"] },
 
     // Maps
     { id:"map_factory", name:"Factory", types:["map"] },
     { id:"map_customs", name:"Customs", types:["map"] },
-    { id:"map_woods", name:"Woods", types:["map"] },
-    { id:"map_shoreline", name:"Shoreline", types:["map"] },
-    { id:"map_interchange", name:"Interchange", types:["map"] },
-    { id:"map_reserve", name:"Reserve", types:["map"] },
-    { id:"map_lighthouse", name:"Lighthouse", types:["map"] },
-    { id:"map_lab", name:"The Lab", types:["map"] }
+    { id:"map_woods", name:"Woods", types:["map"] }
   ];
 }
 
@@ -110,10 +73,7 @@ function card(title, item) {
   return `<div class="item"><h3>${title}</h3>${item.iconLink ? `<img src="${item.iconLink}">` : ""}<div>${item.name}</div></div>`;
 }
 
-// --- Theme Toggle
-function toggleTheme() {
-  document.body.classList.toggle("light");
-}
+function toggleTheme() { document.body.classList.toggle("light"); }
 
 // --- Loadout Generator
 function generateLoadout() {
@@ -130,7 +90,7 @@ function generateLoadout() {
   let compatibleAmmo = ammo.filter(a=>a.caliber===weapon.caliber);
   let selectedAmmo = pick(compatibleAmmo);
 
-  // Rig & Armor Logik: kein doppeltes Armor
+  // Rig & Armor Logik
   let rig = pick(rigs);
   let armorChoice = (rig.name.toLowerCase().includes("plate") || rig.name.toLowerCase().includes("armored")) 
                     ? null 
@@ -140,10 +100,21 @@ function generateLoadout() {
   let backpack = pick(backpacks);
   let map = pick(maps);
 
+  // Waffen-Attachments zufällig auswählen
+  let attachmentsHTML = "";
+  if (weapon.attachments) {
+    weapon.attachments.forEach(att => {
+      if (Math.random() < 0.5) { // 50% Chance für jedes Attachment
+        attachmentsHTML += card(att, {name: att});
+      }
+    });
+  }
+
   document.getElementById("loadout").innerHTML = `
     ${card("🔫 Waffe", weapon)}
+    ${attachmentsHTML}
     ${selectedAmmo ? card("💥 Munition", selectedAmmo) : ""}
-    ${card("🛡️ Armor", armorChoice || {name:"Kein zusätzliche Armor"})}
+    ${card("🛡️ Armor", armorChoice || {name:"Keine zusätzliche Armor"})}
     ${card("🎒 Rig", rig)}
     ${card("🥽 Helm", helmet)}
     ${card("🎒 Rucksack", backpack)}
@@ -157,4 +128,3 @@ generateLoadout();
 
 </body>
 </html>
-
