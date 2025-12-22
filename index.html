@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Mit Attachments</title>
+<title>EFT Random Loadout Generator – Mit Kopfhörer</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -49,7 +49,7 @@ function card(title, item) {
 // Random Attachments 0-10
 function getRandomAttachments() { return Math.floor(Math.random()*11); }
 
-// Fallback-Daten (offline nutzbar, falls API ausfällt)
+// Fallback-Daten (offline)
 const fallbackItems = {
   weapons: [
     {id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm"},
@@ -76,23 +76,37 @@ const fallbackItems = {
     {id:"545bp", name:"5.45×39mm BP", caliber:"5.45x39mm"},
     {id:"556m855", name:"5.56×45mm M855", caliber:"5.56x45mm"},
     {id:"9x19fmj", name:"9x19mm FMJ", caliber:"9x19mm"}
+  ],
+  headphones: [
+    {id:"taccomt50", name:"Taccom T50 Headset"},
+    {id:"zsh", name:"ZSH Headphones"},
+    {id:"ms2000", name:"MS-2000 Headset"},
+    {id:"peltorcomtac", name:"Peltor ComTac"},
+    {id:"sordin", name:"Sordin Supreme Pro X"},
+    {id:"ms3", name:"MS3 Headset"},
+    {id:"comtac2", name:"ComTac 2 Headset"},
+    {id:"teamwendycomtac", name:"Team Wendy ComTac"},
+    {id:"sordinpro", name:"Sordin Pro-X"},
+    {id:"tasc1", name:"TASC 1 Headset"},
+    {id:"x120", name:"X120 Headset"},
+    {id:"x6000", name:"X6000 Tactical Headset"}
   ]
 };
 
 let currentLoadout = null;
 
-async function generateLoadout(forced=null){
+function generateLoadout(forced=null){
   const container = document.getElementById("loadout");
   container.innerHTML = "⏳ Lade Loadout…";
 
   try{
-    // --- Offline Fallback
     const weapons = fallbackItems.weapons;
     const helmets = fallbackItems.helmets;
     const armors = fallbackItems.armors;
     const rigs = fallbackItems.rigs;
     const backpacks = fallbackItems.backpacks;
     const ammo = fallbackItems.ammo;
+    const headphones = fallbackItems.headphones;
 
     // Waffe & passende Munition
     const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
@@ -116,7 +130,10 @@ async function generateLoadout(forced=null){
       rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
     }
 
-    // Map & Attachments
+    // Helm, Rucksack, Map, Kopfhörer, Attachments
+    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
+    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
+    const selectedHeadphones = forced?.headphones ? headphones.find(h=>h.id===forced.headphones) : pick(headphones);
     const map = pick(maps);
     const attachmentValue = getRandomAttachments();
 
@@ -127,18 +144,20 @@ async function generateLoadout(forced=null){
       rig: rig?.id||'',
       backpack: backpack?.id||'',
       map: map,
-      attachments: attachmentValue
+      attachments: attachmentValue,
+      headphones: selectedHeadphones?.id||''
     };
 
-    // Anzeige
     container.innerHTML =
       card("🔫 Waffe", weapon) +
       card("🥽 Helm", helmet) +
+      card("🎧 Kopfhörer", selectedHeadphones) +
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
       `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
-      `<div class="item"><h3>🎲 Attachments</h3><div>${attachmentValue}</div></div>`;
+      `<div class="item"><h3>🎲 Attachments</h3><div>${attachmentValue}</div></div>` +
+      (selectedAmmo ? card("💥 Munition", selectedAmmo) : "");
 
   }catch(e){
     container.innerHTML = "❌ Fehler beim Laden der Daten.";
