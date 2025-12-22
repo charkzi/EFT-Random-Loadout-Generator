@@ -2,65 +2,18 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator v2.3</title>
+<title>EFT Random Loadout Generator v3.0</title>
 <style>
 :root {
-  --bg:#0b0b0b;
-  --card:#161616;
-  --text:#eaeaea;
-  --button:#2a2a2a;
+  --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
 }
-body.light {
-  --bg:#f4f4f4;
-  --card:#ffffff;
-  --text:#111;
-  --button:#ddd;
-}
-body {
-  background:var(--bg);
-  color:var(--text);
-  font-family:Arial,sans-serif;
-  text-align:center;
-  margin:0;
-  padding-bottom:40px;
-  transition:.3s;
-}
-button {
-  padding:14px 22px;
-  font-size:16px;
-  margin:6px;
-  cursor:pointer;
-  background:var(--button);
-  color:var(--text);
-  border:none;
-  border-radius:8px;
-}
-input {
-  width:80%;
-  padding:10px;
-  margin-top:10px;
-  background:var(--card);
-  color:var(--text);
-  border:1px solid #555;
-}
-.grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
-  gap:16px;
-  max-width:1200px;
-  margin:20px auto;
-  padding:0 10px;
-}
-.item {
-  background:var(--card);
-  padding:12px;
-  border-radius:10px;
-}
-.item img {
-  width:100%;
-  max-height:180px;
-  object-fit:contain;
-}
+body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
+body { background:var(--bg); color:var(--text); font-family:Arial,sans-serif; text-align:center; margin:0; padding-bottom:40px; transition:.3s; }
+button { padding:14px 22px; font-size:16px; margin:6px; cursor:pointer; background:var(--button); color:var(--text); border:none; border-radius:8px; }
+input { width:80%; padding:10px; margin-top:10px; background:var(--card); color:var(--text); border:1px solid #555; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:16px; max-width:1200px; margin:20px auto; padding:0 10px; }
+.item { background:var(--card); padding:12px; border-radius:10px; }
+.item img { width:100%; max-height:180px; object-fit:contain; }
 </style>
 </head>
 <body>
@@ -70,7 +23,6 @@ input {
 <button onclick="generateLoadout()">🔄 Neues Loadout</button>
 <button onclick="generateShareLink()">🔗 Share-Link</button>
 <button onclick="toggleTheme()">🌗 Dark / Light</button>
-
 <br>
 <input id="shareLink" readonly placeholder="Share-Link">
 
@@ -80,7 +32,7 @@ input {
 const API="https://api.tarkov.dev/graphql";
 let currentLoadout=null;
 
-/* THEME */
+// Theme
 const savedTheme=localStorage.getItem("theme");
 if(savedTheme==="light")document.body.classList.add("light");
 function toggleTheme(){
@@ -88,117 +40,38 @@ function toggleTheme(){
   localStorage.setItem("theme", document.body.classList.contains("light")?"light":"dark");
 }
 
-/* API */
+// GraphQL Query
 async function query(q){
-  const r=await fetch(API,{
+  const res=await fetch(API,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
     body:JSON.stringify({query:q})
   });
-  if(!r.ok)throw new Error();
-  return (await r.json()).data;
+  const json=await res.json();
+  if(json.errors) throw new Error(json.errors[0].message);
+  return json.data;
 }
 
 const pick=a=>a[Math.floor(Math.random()*a.length)];
-const card=(t,i)=>i?`
+const card=(title,item)=>item?`
 <div class="item">
-<h3>${t}</h3>
-${i.imageLink?`<img src="${i.imageLink}">`:""}
-<div>${i.name}</div>
+<h3>${title}</h3>
+${item.imageLink?`<img src="${item.imageLink}">`:``}
+<div>${item.name}</div>
 </div>`:"";
 
-/* LOADOUT */
 async function generateLoadout(forced=null){
-  const c=document.getElementById("loadout");
-  c.innerHTML="⏳ Generiere Loadout...";
-
+  const container=document.getElementById("loadout");
+  container.innerHTML="⏳ Lade…";
   try{
-    const d=await query(`
+    const data=await query(`
     {
-      weapons:items(types:[gun]){
-        name imageLink caliber
-        slots{name filters{allowedItems{name imageLink}}}
-      }
-      helmets:items(types:[headwear]){name imageLink}
-      masks:items(types:[faceCover]){name imageLink}
-      armors:items(types:[armor]){name imageLink}
-      rigs:items(types:[rig]){name imageLink}
-      backpacks:items(types:[backpack]){name imageLink}
-      ammo:items(types:[ammo]){name imageLink name ammoType}
-    }`);
-
-    const weapon=forced?.weapon?d.weapons.find(w=>w.name===forced.weapon):pick(d.weapons);
-
-    // Munition robust auswählen
-    let ammo=null;
-    if(weapon && weapon.caliber && Array.isArray(d.ammo)){
-      const compatibleAmmo=d.ammo.filter(a=>{
-        return a.ammoType && typeof a.ammoType==="string" &&
-               a.ammoType.toLowerCase().includes(weapon.caliber.toLowerCase());
-      });
-      if(compatibleAmmo.length>0) ammo=pick(compatibleAmmo);
+      weapons: items(types:[gun]) { name imageLink slots{name filters{allowedItems{name imageLink}}} }
+      helmets: items(types:[headwear]) { name imageLink }
+      masks: items(types:[faceCover]) { name imageLink }
+      armors: items(types:[armor]) { name imageLink }
+      rigs: items(types:[rig]) { name imageLink }
+      backpacks: items(types:[backpack]) { name imageLink }
+      ammo: items(types:[ammo]) { name imageLink name }
     }
-    // Fallback: irgendeine Munition
-    if(!ammo && Array.isArray(d.ammo) && d.ammo.length>0) ammo=pick(d.ammo);
 
-    const helmet=forced?.helmet?d.helmets.find(h=>h.name===forced.helmet):pick(d.helmets);
-    const mask=forced?.mask?d.masks.find(m=>m.name===forced.mask):pick(d.masks);
-    const armor=forced?.armor?d.armors.find(a=>a.name===forced.armor):pick(d.armors);
-    const rig=forced?.rig?d.rigs.find(r=>r.name===forced.rig):pick(d.rigs);
-    const backpack=forced?.backpack?d.backpacks.find(b=>b.name===forced.backpack):pick(d.backpacks);
-
-    let attachmentsHTML="";
-    weapon?.slots?.forEach(slot=>{
-      if(slot.filters?.allowedItems?.length){
-        attachmentsHTML+=card(slot.name,pick(slot.filters.allowedItems));
-      }
-    });
-
-    currentLoadout={
-      weapon:weapon?.name||"",
-      helmet:helmet?.name||"",
-      mask:mask?.name||"",
-      armor:armor?.name||"",
-      rig:rig?.name||"",
-      backpack:backpack?.name||""
-    };
-
-    c.innerHTML=`
-      ${card("🔫 Waffe",weapon)}
-      ${attachmentsHTML}
-      ${card("💥 Munition",ammo)}
-      ${card("🥽 Helm",helmet)}
-      ${card("😷 Maske",mask)}
-      ${card("🛡️ Rüstung",armor)}
-      ${card("🎒 Rig",rig)}
-      ${card("🎒 Rucksack",backpack)}
-    `;
-
-  }catch(e){
-    c.innerHTML="❌ Fehler beim Laden der Daten";
-    console.error(e);
-  }
-}
-
-/* SHARE LINK */
-function generateShareLink(){
-  if(!currentLoadout)return;
-  const encoded=btoa(JSON.stringify(currentLoadout));
-  const url=`${location.origin}${location.pathname}?loadout=${encoded}`;
-  document.getElementById("shareLink").value=url;
-}
-
-/* LOAD SHARED */
-const params=new URLSearchParams(window.location.search);
-if(params.has("loadout")){
-  try{
-    const decoded=JSON.parse(atob(params.get("loadout")));
-    generateLoadout(decoded);
-  }catch{
-    generateLoadout();
-  }
-}
-</script>
-
-</body>
-</html>
