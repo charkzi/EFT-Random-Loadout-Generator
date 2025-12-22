@@ -2,34 +2,16 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Ohne Kopfhörer</title>
+<title>EFT Random Loadout Generator – Kein Konflikt + Random Map</title>
 <style>
-:root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; --attachment-filled:#4caf50; --attachment-empty:#555; }
-body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; --attachment-filled:#4caf50; --attachment-empty:#ccc; }
+:root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
+body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
 body { background:var(--bg); color:var(--text); font-family:Arial,sans-serif; text-align:center; margin:0; padding:0 10px 40px; transition:.3s; }
 button { padding:12px 18px; font-size:16px; margin:8px; cursor:pointer; background:var(--button); color:var(--text); border:none; border-radius:6px; }
 input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:var(--text); border:1px solid #555; border-radius:6px;}
 .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; max-width:1000px; margin:20px auto; }
 .item { background:var(--card); padding:10px; border-radius:8px; }
 .item img { width:100%; max-height:160px; object-fit:contain; }
-.attachments { display:flex; justify-content:center; gap:4px; margin-top:6px; }
-.attachments div { width:16px; height:16px; border-radius:3px; background:var(--attachment-empty); position:relative; }
-.attachments .filled { background:var(--attachment-filled); }
-/* Tooltip */
-.attachments div[data-tooltip]:hover::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 125%; 
-  left: 50%;
-  transform: translateX(-50%);
-  background: #333;
-  color: #fff;
-  padding: 2px 6px;
-  border-radius: 4px;
-  white-space: nowrap;
-  font-size: 12px;
-  z-index: 10;
-}
 </style>
 </head>
 <body>
@@ -41,6 +23,7 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 <button onclick="toggleTheme()">🌗 Dark/Light</button>
 <br>
 <input id="shareLink" readonly placeholder="Share-Link">
+
 <div class="grid" id="loadout"></div>
 
 <script>
@@ -53,43 +36,29 @@ const savedTheme = localStorage.getItem("theme");
 if (savedTheme === "light") document.body.classList.add("light");
 function toggleTheme() {
   document.body.classList.toggle("light");
-  localStorage.setItem("theme", document.body.classList.contains("light") ? "light" : "dark");
+  localStorage.setItem("theme",
+    document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// Hilfsfunktionen
+// Zufällige Map
 const maps = ["Customs","Woods","Shoreline","Interchange","The Lab","Reserve","Lighthouse"];
 function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
-function card(title, item) { 
+
+function card(title, item) {
   if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
   return `<div class="item"><h3>${title}</h3>${item.iconLink?`<img src="${item.iconLink}">`:''}<div>${item.shortName||item.name||''}</div></div>`;
 }
-function getRandomAttachments() { return Math.floor(Math.random()*11); }
-function renderAttachments(count) {
-  let html = '<div class="attachments">';
-  for(let i=0;i<10;i++){
-    html += `<div class="${i<count?'filled':''}" data-tooltip="Attachments: ${count}"></div>`;
-  }
-  html += '</div>';
-  return html;
-}
 
-// API Abfrage
+function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
+
 async function fetchAllItems() {
   const res = await fetch(API,{
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ query: `
-      {
-        weapons: items(types: [gun]) { id name shortName iconLink }
-        helmets: items(types: [headwear]) { id name shortName iconLink }
-        armors: items(types: [armor]) { id name shortName iconLink }
-        rigs: items(types: [rig]) { id name shortName iconLink }
-        backpacks: items(types: [backpack]) { id name shortName iconLink }
-      }
-    `})
+    body:JSON.stringify({ query:"query { items { id name shortName iconLink types } }" })
   });
   const json = await res.json();
-  return json.data;
+  return json.data.items;
 }
 
 async function generateLoadout(forced=null){
@@ -99,32 +68,49 @@ async function generateLoadout(forced=null){
   try{
     if(!allItems) allItems = await fetchAllItems();
 
-    const weapons = allItems.weapons;
-    const helmets = allItems.helmets;
-    const armors = allItems.armors;
-    const rigs = allItems.rigs;
-    const backpacks = allItems.backpacks;
+    let weapons = fallbackFilter(allItems,["gun"]);
+    let helmets = fallbackFilter(allItems,["headwear","helmet"]);
+    let armors = fallbackFilter(allItems,["armor"]);
+    let rigs = fallbackFilter(allItems,["rig"]);
+    let backpacks = fallbackFilter(allItems,["backpack"]);
 
-    // Rig/Armor Konflikt
+    const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
+    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
+    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
+
+    // Strikte Logik: Rig/Armor Konflikt
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
     const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
     const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
     const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
 
-    let rig = pick(rigs);
+    let rig = null;
     let armor = null;
-    if(rig.name.toLowerCase().includes("armored")){
-      armor = null;
-    } else {
+
+    // Entscheidung: zuerst Rig oder Armor
+    if(Math.random()<0.5){
+      // Rig zuerst
+      rig = pick(armoredRigs.concat(normalRigs));
+      if(rig.name.toLowerCase().includes("armored")){
+        armor = null; // Armored Rig → keine Armor
+      } else {
+        armor = pick(heavyArmor.concat(lightArmor));
+        if(armor && armor.name.toLowerCase().includes("armor")){
+          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
+        }
+      }
+    }else{
+      // Armor zuerst
       armor = pick(heavyArmor.concat(lightArmor));
+      if(armor && armor.name.toLowerCase().includes("armor")){
+        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
+      } else {
+        rig = pick(armoredRigs.concat(normalRigs));
+      }
     }
 
-    // Helm, Rucksack, Map, Attachments
-    const weapon = pick(weapons);
-    const helmet = pick(helmets);
-    const backpack = pick(backpacks);
+    // Zufällige Map
     const map = pick(maps);
-    const attachmentValue = getRandomAttachments();
 
     currentLoadout = {
       weapon: weapon?.id||'',
@@ -132,8 +118,7 @@ async function generateLoadout(forced=null){
       armor: armor?.id||'',
       rig: rig?.id||'',
       backpack: backpack?.id||'',
-      map: map,
-      attachments: attachmentValue
+      map: map
     };
 
     container.innerHTML =
@@ -142,8 +127,7 @@ async function generateLoadout(forced=null){
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
-      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
-      `<div class="item"><h3>🎲 Attachments</h3>${renderAttachments(attachmentValue)}</div>`;
+      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>`;
 
   }catch(e){
     container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
@@ -164,11 +148,8 @@ const params = new URLSearchParams(window.location.search);
 if(params.has("loadout")){
   try{ const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
   catch{ generateLoadout(); }
-}else{
-  generateLoadout();
 }
 </script>
 
 </body>
 </html>
-
