@@ -18,8 +18,7 @@ body.light {
 }
 
 body {
-  background: url('/mnt/data/39596151-a12f-41f3-ad4e-60de0d71e2d4.jpg') no-repeat center center fixed;
-  background-size: cover;
+  background: #000000; /* Schwarz */
   color: var(--text);
   font-family: Arial, sans-serif;
   text-align: center;
@@ -34,7 +33,7 @@ body::before {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  background: rgba(0,0,0,0.2); /* leichtes Abdunkeln, Bild sichtbar */
+  background: rgba(0,0,0,0); /* kein Abdunkeln nötig */
   z-index: -1;
 }
 
@@ -200,3 +199,4 @@ if(params.has("loadout")){
 
 </body>
 </html>
+
