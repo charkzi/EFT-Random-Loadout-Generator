@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Kein Konflikt + Random Map</title>
+<title>EFT Random Loadout Generator – Mit Attachments</title>
 <style>
 :root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
@@ -27,10 +27,6 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 <div class="grid" id="loadout"></div>
 
 <script>
-const API = "https://api.tarkov.dev/graphql";
-let allItems = null;
-let currentLoadout = null;
-
 // Theme Toggle
 const savedTheme = localStorage.getItem("theme");
 if (savedTheme === "light") document.body.classList.add("light");
@@ -44,41 +40,66 @@ function toggleTheme() {
 const maps = ["Customs","Woods","Shoreline","Interchange","The Lab","Reserve","Lighthouse"];
 function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
 
+// Card HTML
 function card(title, item) {
   if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
   return `<div class="item"><h3>${title}</h3>${item.iconLink?`<img src="${item.iconLink}">`:''}<div>${item.shortName||item.name||''}</div></div>`;
 }
 
-function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
+// Random Attachments 0-10
+function getRandomAttachments() { return Math.floor(Math.random()*11); }
 
-async function fetchAllItems() {
-  const res = await fetch(API,{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({ query:"query { items { id name shortName iconLink types } }" })
-  });
-  const json = await res.json();
-  return json.data.items;
-}
+// Fallback-Daten (offline nutzbar, falls API ausfällt)
+const fallbackItems = {
+  weapons: [
+    {id:"ak74m", name:"AK‑74M", caliber:"5.45x39mm"},
+    {id:"m4a1", name:"M4A1", caliber:"5.56x45mm"},
+    {id:"mp5", name:"HK MP5", caliber:"9x19mm"}
+  ],
+  helmets: [
+    {id:"kiver", name:"Kiver Helmet"},
+    {id:"psh97", name:"PSh‑97 Helmet"}
+  ],
+  armors: [
+    {id:"paca_soft", name:"PACA Soft Armor"},
+    {id:"6b23", name:"6B23 Armor"}
+  ],
+  rigs: [
+    {id:"avs", name:"Crye AVS"},
+    {id:"blackrock", name:"BlackRock Chest Rig"}
+  ],
+  backpacks: [
+    {id:"6sh118", name:"6Sh118 Backpack"},
+    {id:"pilgrim", name:"Pilgrim Backpack"}
+  ],
+  ammo: [
+    {id:"545bp", name:"5.45×39mm BP", caliber:"5.45x39mm"},
+    {id:"556m855", name:"5.56×45mm M855", caliber:"5.56x45mm"},
+    {id:"9x19fmj", name:"9x19mm FMJ", caliber:"9x19mm"}
+  ]
+};
+
+let currentLoadout = null;
 
 async function generateLoadout(forced=null){
   const container = document.getElementById("loadout");
   container.innerHTML = "⏳ Lade Loadout…";
 
   try{
-    if(!allItems) allItems = await fetchAllItems();
+    // --- Offline Fallback
+    const weapons = fallbackItems.weapons;
+    const helmets = fallbackItems.helmets;
+    const armors = fallbackItems.armors;
+    const rigs = fallbackItems.rigs;
+    const backpacks = fallbackItems.backpacks;
+    const ammo = fallbackItems.ammo;
 
-    let weapons = fallbackFilter(allItems,["gun"]);
-    let helmets = fallbackFilter(allItems,["headwear","helmet"]);
-    let armors = fallbackFilter(allItems,["armor"]);
-    let rigs = fallbackFilter(allItems,["rig"]);
-    let backpacks = fallbackFilter(allItems,["backpack"]);
-
+    // Waffe & passende Munition
     const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
-    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
-    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
+    const compatibleAmmo = ammo.filter(a=>a.caliber===weapon.caliber);
+    const selectedAmmo = pick(compatibleAmmo);
 
-    // Strikte Logik: Rig/Armor Konflikt
+    // Rig & Armor Logik
     const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
     const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
     const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
@@ -87,30 +108,17 @@ async function generateLoadout(forced=null){
     let rig = null;
     let armor = null;
 
-    // Entscheidung: zuerst Rig oder Armor
     if(Math.random()<0.5){
-      // Rig zuerst
       rig = pick(armoredRigs.concat(normalRigs));
-      if(rig.name.toLowerCase().includes("armored")){
-        armor = null; // Armored Rig → keine Armor
-      } else {
-        armor = pick(heavyArmor.concat(lightArmor));
-        if(armor && armor.name.toLowerCase().includes("armor")){
-          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
-        }
-      }
+      armor = rig.name.toLowerCase().includes("armored") ? null : pick(heavyArmor.concat(lightArmor));
     }else{
-      // Armor zuerst
       armor = pick(heavyArmor.concat(lightArmor));
-      if(armor && armor.name.toLowerCase().includes("armor")){
-        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
-      } else {
-        rig = pick(armoredRigs.concat(normalRigs));
-      }
+      rig = armor?.name.toLowerCase().includes("armor") ? pick(normalRigs) : pick(armoredRigs.concat(normalRigs));
     }
 
-    // Zufällige Map
+    // Map & Attachments
     const map = pick(maps);
+    const attachmentValue = getRandomAttachments();
 
     currentLoadout = {
       weapon: weapon?.id||'',
@@ -118,19 +126,22 @@ async function generateLoadout(forced=null){
       armor: armor?.id||'',
       rig: rig?.id||'',
       backpack: backpack?.id||'',
-      map: map
+      map: map,
+      attachments: attachmentValue
     };
 
+    // Anzeige
     container.innerHTML =
       card("🔫 Waffe", weapon) +
       card("🥽 Helm", helmet) +
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
-      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>`;
+      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
+      `<div class="item"><h3>🎲 Attachments</h3><div>${attachmentValue}</div></div>`;
 
   }catch(e){
-    container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
+    container.innerHTML = "❌ Fehler beim Laden der Daten.";
     console.error(e);
   }
 }
@@ -148,6 +159,8 @@ const params = new URLSearchParams(window.location.search);
 if(params.has("loadout")){
   try{ const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
   catch{ generateLoadout(); }
+}else{
+  generateLoadout();
 }
 </script>
 
