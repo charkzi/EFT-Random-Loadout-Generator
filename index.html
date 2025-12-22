@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Stabil mit Fallbacks</title>
+<title>EFT Random Loadout Generator – Mit Masken</title>
 <style>
 :root {
   --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
@@ -32,6 +32,13 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 const API = "https://api.tarkov.dev/graphql";
 let allItems = null;
 let currentLoadout = null;
+
+// Statische Fallback-Masken
+const fallbackMasks = [
+  { name: "Shemagh", shortName: "Shemagh", iconLink: "https://tarkov.dev/item/shemagh.png", id: "mask1" },
+  { name: "Balaclava", shortName: "Balaclava", iconLink: "https://tarkov.dev/item/balaclava.png", id: "mask2" },
+  { name: "Gasmaske", shortName: "Gasmaske", iconLink: "https://tarkov.dev/item/gas_mask.png", id: "mask3" }
+];
 
 // Theme Toggle
 const savedTheme = localStorage.getItem("theme");
@@ -101,6 +108,7 @@ async function generateLoadout(forced=null) {
     let weapons = fallbackFilter(allItems, ["gun"]);
     let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
     let masks = fallbackFilter(allItems, ["faceCover", "mask"]);
+    if (!masks.length) masks = fallbackMasks; // Fallback verwenden, falls leer
     let armors = fallbackFilter(allItems, ["armor"]);
     let rigs = fallbackFilter(allItems, ["rig"]);
     let backpacks = fallbackFilter(allItems, ["backpack"]);
