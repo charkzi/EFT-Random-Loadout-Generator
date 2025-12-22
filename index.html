@@ -62,9 +62,11 @@ input {
 }
 
 .item img { 
-  width:100%; 
-  max-height:160px; 
-  object-fit:cover; 
+  width:100%;              /* Bild füllt die Breite des Containers */
+  max-height:200px;        /* Maximalhöhe */
+  object-fit: contain;      /* gesamte Grafik sichtbar, kein Zuschneiden */
+  image-rendering: auto;   /* glatte Kanten */
+  margin-bottom:5px;       /* Abstand zum Text */
 }
 </style>
 </head>
@@ -198,3 +200,4 @@ if(params.has("loadout")){
 
 </body>
 </html>
+
