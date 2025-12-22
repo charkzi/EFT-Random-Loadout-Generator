@@ -95,21 +95,8 @@ function toggleTheme() {
     document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// Map-Bilder
-const mapImages = {
-  "Customs": "/images/maps/customs.jpg",
-  "Woods": "/images/maps/woods.jpg",
-  "Shoreline": "/images/maps/shoreline.jpg",
-  "Interchange": "/images/maps/interchange.jpg",
-  "The Lab": "/images/maps/lab.jpg",
-  "Reserve": "/images/maps/reserve.jpg",
-  "Lighthouse": "/images/maps/lighthouse.jpg",
-  "Ground Zero": "/images/maps/ground_zero.jpg",
-  "Streets of Tarkov": "/images/maps/streets_of_tarkov.jpg"
-};
-
 // Zufällige Map
-const maps = Object.keys(mapImages);
+const maps = ["Customs","Woods","Shoreline","Interchange","The Lab","Reserve","Lighthouse","Ground Zero","Streets of Tarkov"];
 function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
 
 function card(title, item) {
@@ -182,9 +169,7 @@ async function generateLoadout(forced=null){
       card("🛡️ Rüstung", armor) +
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack) +
-      `<div class="item"><h3>🗺 Map</h3>
-         ${mapImages[map] ? `<img src="${mapImages[map]}">` : ''}<div>${map}</div>
-       </div>` +
+      `<div class="item"><h3>🗺 Map</h3><div>${map}</div></div>` +
       `<div class="item"><h3>🎲 Attachments</h3><div>${attachments}</div></div>`;
 
   }catch(e){
