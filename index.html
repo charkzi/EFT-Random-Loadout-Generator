@@ -30,7 +30,6 @@ input { width:90%; padding:10px; margin-top:10px; background:var(--card); color:
 
 <script>
 const API = "https://api.tarkov.dev/graphql";
-let allItems = null;
 let currentLoadout = null;
 
 // Theme Toggle
@@ -42,27 +41,23 @@ function toggleTheme() {
     document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// Fetch all items from API
-async function fetchAllItems() {
-  const res = await fetch(API, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      query: `
-        query {
-          items {
-            id
-            name
-            shortName
-            iconLink
-            types
-          }
-        }
-      `
-    })
-  });
-  const json = await res.json();
-  return json.data.items;
+// GraphQL fetch
+async function fetchItemsByType(type) {
+  try {
+    const res = await fetch(API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `query { items(filter:{type:${type}}) { id name shortName iconLink types } }`
+      })
+    });
+    const json = await res.json();
+    if (json.errors) throw new Error("GraphQL Fehler");
+    return json.data.items;
+  } catch (e) {
+    console.error(`Fehler beim Laden von ${type}:`, e);
+    return [];
+  }
 }
 
 function pick(arr) {
@@ -79,51 +74,45 @@ function card(title, item) {
     </div>`;
 }
 
-async function generateLoadout(forced = null) {
+// Generate loadout
+async function generateLoadout(forced=null) {
   const container = document.getElementById("loadout");
   container.innerHTML = "⏳ Lade Loadout…";
 
-  try {
-    if (!allItems) {
-      allItems = await fetchAllItems();
-    }
+  // Lade alle Kategorien einzeln
+  const [weapons, helmets, masks, armors, rigs, backpacks] = await Promise.all([
+    fetchItemsByType("gun"),
+    fetchItemsByType("headwear"),
+    fetchItemsByType("faceCover"),
+    fetchItemsByType("armor"),
+    fetchItemsByType("rig"),
+    fetchItemsByType("backpack")
+  ]);
 
-    // Robust filter using .some() to handle multiple types
-    const weapons = allItems.filter(i => i.types?.some(t => t === "gun"));
-    const helmets = allItems.filter(i => i.types?.some(t => t === "headwear"));
-    const masks = allItems.filter(i => i.types?.some(t => t === "faceCover"));
-    const armors = allItems.filter(i => i.types?.some(t => t === "armor"));
-    const rigs = allItems.filter(i => i.types?.some(t => t === "rig"));
-    const backpacks = allItems.filter(i => i.types?.some(t => t === "backpack"));
+  // Pick items oder forced
+  const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
+  const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
+  const mask = forced?.mask ? masks.find(m => m.id===forced.mask) : pick(masks);
+  const armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
+  const rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
+  const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
 
-    const weapon = forced?.weapon ? weapons.find(w => w.id === forced.weapon) : pick(weapons);
-    const helmet = forced?.helmet ? helmets.find(h => h.id === forced.helmet) : pick(helmets);
-    const mask = forced?.mask ? masks.find(m => m.id === forced.mask) : pick(masks);
-    const armor = forced?.armor ? armors.find(a => a.id === forced.armor) : pick(armors);
-    const rig = forced?.rig ? rigs.find(r => r.id === forced.rig) : pick(rigs);
-    const backpack = forced?.backpack ? backpacks.find(b => b.id === forced.backpack) : pick(backpacks);
+  currentLoadout = {
+    weapon: weapon?.id || "",
+    helmet: helmet?.id || "",
+    mask: mask?.id || "",
+    armor: armor?.id || "",
+    rig: rig?.id || "",
+    backpack: backpack?.id || ""
+  };
 
-    currentLoadout = {
-      weapon: weapon?.id || "",
-      helmet: helmet?.id || "",
-      mask: mask?.id || "",
-      armor: armor?.id || "",
-      rig: rig?.id || "",
-      backpack: backpack?.id || ""
-    };
-
-    container.innerHTML =
-      card("🔫 Waffe", weapon) +
-      card("🥽 Helm", helmet) +
-      card("😷 Maske", mask) +
-      card("🛡️ Rüstung", armor) +
-      card("🎒 Rig", rig) +
-      card("🎒 Rucksack", backpack);
-
-  } catch (e) {
-    container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
-    console.error(e);
-  }
+  container.innerHTML =
+    card("🔫 Waffe", weapon) +
+    card("🥽 Helm", helmet) +
+    card("😷 Maske", mask) +
+    card("🛡️ Rüstung", armor) +
+    card("🎒 Rig", rig) +
+    card("🎒 Rucksack", backpack);
 }
 
 // Share-Link
