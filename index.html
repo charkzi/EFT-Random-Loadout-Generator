@@ -2,11 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>EFT Random Loadout Generator – Kein Konflikt + ohne Masken</title>
+<title>EFT Random Loadout Generator – Kein Konflikt Rig/Armor</title>
 <style>
-:root {
-  --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a;
-}
+:root { --bg:#0b0b0b; --card:#161616; --text:#eaeaea; --button:#2a2a2a; }
 body.light { --bg:#f4f4f4; --card:#ffffff; --text:#111; --button:#ddd; }
 body { background:var(--bg); color:var(--text); font-family:Arial,sans-serif; text-align:center; margin:0; padding:0 10px 40px; transition:.3s; }
 button { padding:12px 18px; font-size:16px; margin:8px; cursor:pointer; background:var(--button); color:var(--text); border:none; border-radius:6px; }
@@ -42,7 +40,7 @@ function toggleTheme() {
     document.body.classList.contains("light") ? "light" : "dark");
 }
 
-// GraphQL fetch
+// Fetch all items
 async function fetchAllItems() {
   const res = await fetch(API, {
     method: "POST",
@@ -53,26 +51,13 @@ async function fetchAllItems() {
   return json.data.items;
 }
 
-function pick(arr) {
-  return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null;
-}
-
+function pick(arr) { return arr && arr.length ? arr[Math.floor(Math.random()*arr.length)] : null; }
 function card(title, item) {
   if (!item) return `<div class="item"><h3>${title}</h3><div>Keine Daten</div></div>`;
-  return `
-    <div class="item">
-      <h3>${title}</h3>
-      ${item.iconLink ? `<img src="${item.iconLink}">` : ""}
-      <div>${item.shortName || item.name || ""}</div>
-    </div>`;
+  return `<div class="item"><h3>${title}</h3>${item.iconLink?`<img src="${item.iconLink}">`:''}<div>${item.shortName||item.name||''}</div></div>`;
 }
+function fallbackFilter(items, types) { return items.filter(i => i.types?.some(t => types.includes(t))); }
 
-// Fallback: suche Items mit alternativen Typen
-function fallbackFilter(items, types) {
-  return items.filter(i => i.types?.some(t => types.includes(t)));
-}
-
-// Generate loadout
 async function generateLoadout(forced=null) {
   const container = document.getElementById("loadout");
   container.innerHTML = "⏳ Lade Loadout…";
@@ -81,36 +66,52 @@ async function generateLoadout(forced=null) {
     if (!allItems) allItems = await fetchAllItems();
 
     let weapons = fallbackFilter(allItems, ["gun"]);
-    let helmets = fallbackFilter(allItems, ["headwear", "helmet"]);
+    let helmets = fallbackFilter(allItems, ["headwear","helmet"]);
     let armors = fallbackFilter(allItems, ["armor"]);
     let rigs = fallbackFilter(allItems, ["rig"]);
     let backpacks = fallbackFilter(allItems, ["backpack"]);
 
-    const weapon = forced?.weapon ? weapons.find(w => w.id===forced.weapon) : pick(weapons);
-    const helmet = forced?.helmet ? helmets.find(h => h.id===forced.helmet) : pick(helmets);
-    const backpack = forced?.backpack ? backpacks.find(b => b.id===forced.backpack) : pick(backpacks);
+    // Auswählen
+    const weapon = forced?.weapon ? weapons.find(w=>w.id===forced.weapon) : pick(weapons);
+    const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
+    const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
 
-    // 🔹 Rig zuerst auswählen
-    let rig = forced?.rig ? rigs.find(r => r.id===forced.rig) : pick(rigs);
-    const isArmoredRig = rig?.name?.toLowerCase().includes("armored");
+    // Armored / Armor Konflikt
+    const armoredRigs = rigs.filter(r=>r.name.toLowerCase().includes("armored"));
+    const normalRigs = rigs.filter(r=>!r.name.toLowerCase().includes("armored"));
+    const heavyArmor = armors.filter(a=>a.name.toLowerCase().includes("armor"));
+    const lightArmor = armors.filter(a=>!a.name.toLowerCase().includes("armor"));
 
-    // 🔹 Rüstung auswählen abhängig vom Rig
+    let rig = null;
     let armor = null;
-    if (!isArmoredRig) {
-      armor = forced?.armor ? armors.find(a => a.id===forced.armor) : pick(armors);
-      // Wenn Rüstung gewählt wurde, Armored Rigs ausschließen
-      if (armor) {
-        const nonArmoredRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored"));
-        rig = pick(nonArmoredRigs) || rig;
+
+    if (Math.random() < 0.5) {
+      // Rig zuerst
+      rig = pick(armoredRigs.concat(normalRigs));
+      if (!rig.name.toLowerCase().includes("armored")) {
+        armor = pick(heavyArmor.concat(lightArmor));
+        if (armor && armor.name.toLowerCase().includes("armor")) {
+          rig = pick(normalRigs); // schwere Armor → nur normale Rigs
+        }
+      } else {
+        armor = null; // Armored Rig → keine Armor
+      }
+    } else {
+      // Armor zuerst
+      armor = pick(heavyArmor.concat(lightArmor));
+      if (armor && armor.name.toLowerCase().includes("armor")) {
+        rig = pick(normalRigs); // schwere Armor → kein Armored Rig
+      } else {
+        rig = pick(armoredRigs.concat(normalRigs));
       }
     }
 
     currentLoadout = {
-      weapon: weapon?.id || "",
-      helmet: helmet?.id || "",
-      armor: armor?.id || "",
-      rig: rig?.id || "",
-      backpack: backpack?.id || ""
+      weapon: weapon?.id||'',
+      helmet: helmet?.id||'',
+      armor: armor?.id||'',
+      rig: rig?.id||'',
+      backpack: backpack?.id||''
     };
 
     container.innerHTML =
@@ -120,7 +121,7 @@ async function generateLoadout(forced=null) {
       card("🎒 Rig", rig) +
       card("🎒 Rucksack", backpack);
 
-  } catch (e) {
+  } catch(e) {
     container.innerHTML = "❌ Fehler beim Laden der Daten — API liefert kein gültiges Ergebnis.";
     console.error(e);
   }
@@ -137,12 +138,8 @@ function generateShareLink() {
 // Load shared loadout
 const params = new URLSearchParams(window.location.search);
 if (params.has("loadout")) {
-  try {
-    const decoded = JSON.parse(atob(params.get("loadout")));
-    generateLoadout(decoded);
-  } catch {
-    generateLoadout();
-  }
+  try { const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
+  catch { generateLoadout(); }
 }
 </script>
 
