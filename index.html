@@ -63,9 +63,10 @@ input {
 
 .item img { 
   width:100%;              
-  max-height:200px;        
+  max-height:250px;        /* höher für mehr Details */
   object-fit: contain;     
   image-rendering: auto;   
+  -webkit-backface-visibility: hidden; /* leicht schärfere Skalierung */
   margin-bottom:5px;       
 }
 </style>
@@ -110,7 +111,7 @@ function card(title, item) {
 }
 
 function fallbackFilter(items, types) { return items.filter(i=>i.types?.some(t=>types.includes(t))); }
-function getRandomAttachments() { return Math.floor(Math.random()*26); }
+function getRandomAttachments() { return Math.floor(Math.random() * 21); } // 0-20
 
 async function fetchAllItems() {
   const res = await fetch(API,{
@@ -139,7 +140,6 @@ async function generateLoadout(forced=null){
     const helmet = forced?.helmet ? helmets.find(h=>h.id===forced.helmet) : pick(helmets);
     const backpack = forced?.backpack ? backpacks.find(b=>b.id===forced.backpack) : pick(backpacks);
 
-    // Kategorien aufteilen
     const armoredRigs = rigs.filter(r => r.name.toLowerCase().includes("armored") || r.name.toLowerCase().includes("plate carrier"));
     const normalRigs = rigs.filter(r => !r.name.toLowerCase().includes("armored") && !r.name.toLowerCase().includes("plate carrier"));
     const heavyArmor = armors.filter(a => a.name.toLowerCase().includes("armor"));
@@ -148,17 +148,16 @@ async function generateLoadout(forced=null){
     let rig = null;
     let armor = null;
 
-    // Zufällig Rig oder Armor zuerst
     if(Math.random() < 0.5){
-        rig = pick(rigs); // kann armored/plate carrier sein
+        rig = pick(rigs);
         if(armoredRigs.includes(rig)){
             armor = { id:null, name:"Keine", shortName:"Keine", iconLink:null };
         } else {
             armor = pick(heavyArmor.concat(lightArmor));
         }
     } else {
-        armor = pick(heavyArmor.concat(lightArmor)); // nur echte Armor-Kategorie
-        rig = pick(normalRigs); // kein armored Rig oder Plate Carrier
+        armor = pick(heavyArmor.concat(lightArmor));
+        rig = pick(normalRigs);
     }
 
     const map = pick(maps);
@@ -197,7 +196,6 @@ function generateShareLink(){
   document.getElementById("shareLink").value = url;
 }
 
-// Load shared loadout
 const params = new URLSearchParams(window.location.search);
 if(params.has("loadout")){
   try{ const decoded = JSON.parse(atob(params.get("loadout"))); generateLoadout(decoded); }
@@ -209,4 +207,3 @@ if(params.has("loadout")){
 
 </body>
 </html>
-
